@@ -1,0 +1,17 @@
+---
+import "../styles/global.css";
+import UpdatesFeed from "../components/UpdatesFeed.tsx";
+---
+
+<html lang="ja">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="generator" content={Astro.generator} />
+		<title>更新情報 | ウェザーニュースLiVE アーカイブ</title>
+		<meta name="description" content="ウェザーニュースの公式サイト・YouTube の新着更新情報" />
+	</head>
+	<body class="bg-neutral-50 dark:bg-neutral-950">
+		<UpdatesFeed client:load />
+	</body>
+</html>

@@ -81,6 +81,7 @@ export default function BroadcastArchive({ meta }: { meta: Meta }) {
         <div>
           <h1 className="text-2xl font-medium">ウェザーニュースLiVE アーカイブ</h1>
           <p className="text-sm text-neutral-500">2022年〜現在の放送をキャスター・番組・日付で検索</p>
+          <a href={`${import.meta.env.BASE_URL}updates`} className="text-sm text-neutral-500 hover:underline">更新情報（公式サイト・YouTube）→</a>
         </div>
         <input
           value={q}
