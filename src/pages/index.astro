@@ -1,0 +1,18 @@
+---
+import "../styles/global.css";
+import BroadcastArchive from "../components/BroadcastArchive.tsx";
+import meta from "../data/meta.json";
+---
+
+<html lang="ja">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="generator" content={Astro.generator} />
+		<title>ウェザーニュースLiVE アーカイブ</title>
+		<meta name="description" content="ウェザーニュースLiVEの放送をキャスター・番組・日付で検索できるアーカイブ" />
+	</head>
+	<body class="bg-neutral-50 dark:bg-neutral-950">
+		<BroadcastArchive meta={meta} client:load />
+	</body>
+</html>
