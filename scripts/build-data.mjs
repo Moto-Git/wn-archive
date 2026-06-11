@@ -65,7 +65,7 @@ for (const b of broadcasts) {
 const rank = (obj) =>
   Object.entries(obj)
     .sort((a, b) => b[1] - a[1])
-    .map(([name, count]) => ({ name, count }));
+    .map(([name, count]) => ({ name, count, slug: name.replace(/\s/g, "") }));
 const meta = {
   total: broadcasts.length,
   days: new Set(broadcasts.map((b) => b.date)).size,

@@ -131,6 +131,14 @@ export default function BroadcastArchive({ meta }: { meta: Meta }) {
               <option key={c.name} value={c.name}>{c.name}（{c.count}）</option>
             ))}
           </select>
+          {caster !== "all" && (
+            <a
+              href={`${import.meta.env.BASE_URL}caster/${caster.replace(/\s/g, "")}`}
+              className="text-xs text-teal-700 hover:underline dark:text-teal-400"
+            >
+              {caster} の詳細ページ（出演履歴・統計）→
+            </a>
+          )}
         </label>
         <label className="flex flex-col gap-1 text-sm text-neutral-500">
           予報士別

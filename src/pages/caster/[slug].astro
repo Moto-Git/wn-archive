@@ -1,0 +1,27 @@
+---
+import "../../styles/global.css";
+import CasterDetail from "../../components/CasterDetail.tsx";
+import meta from "../../data/meta.json";
+
+export function getStaticPaths() {
+  return meta.casters.map((c: { name: string; slug: string }) => ({
+    params: { slug: c.slug },
+    props: { name: c.name },
+  }));
+}
+
+const { name } = Astro.props;
+---
+
+<html lang="ja">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{name} | ウェザーニュースLiVE アーカイブ</title>
+		<meta name="description" content={`${name}が担当したウェザーニュースLiVEの放送一覧と統計`} />
+	</head>
+	<body class="bg-neutral-50 dark:bg-neutral-950">
+		<CasterDetail name={name} client:load />
+	</body>
+</html>
