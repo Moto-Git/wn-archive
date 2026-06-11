@@ -1,0 +1,54 @@
+name: Refresh broadcast data
+
+# ClaudeOps(private)がクラウドで毎日更新する wn-broadcasts.csv を取り込み、
+# 放送データを再生成してコミットする。push をトリガーに deploy.yml がサイトを再公開。
+# Mac の起動有無に依存しない完全クラウド更新。
+#
+# 事前準備（1回だけ・もとさんの操作）:
+#   1) GitHub で Fine-grained personal access token を作成
+#      - Repository access: Moto-Git/claude-ops のみ
+#      - Permissions: Contents = Read-only
+#   2) この wn-archive リポジトリの Settings → Secrets → Actions に
+#      CLAUDEOPS_TOKEN という名前で登録
+
+on:
+  schedule:
+    - cron: "0 22 * * *"   # 毎日 07:00 JST (= 22:00 UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout ClaudeOps (private)
+        uses: actions/checkout@v4
+        with:
+          repository: Moto-Git/claude-ops
+          token: ${{ secrets.CLAUDEOPS_TOKEN }}
+          path: claude-ops
+          sparse-checkout: roles/publisher/output/watch-digest/wn-broadcasts.csv
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Regenerate data
+        run: node scripts/build-data.mjs claude-ops/roles/publisher/output/watch-digest/wn-broadcasts.csv
+
+      - name: Commit if changed
+        run: |
+          git config user.name  "wn-archive-bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/broadcasts.json src/data/meta.json
+          if git diff --cached --quiet; then
+            echo "変更なし"
+          else
+            git commit -m "data: 放送データ自動更新 $(date -u +%Y-%m-%d)"
+            git push
+          fi
