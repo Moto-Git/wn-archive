@@ -1,0 +1,17 @@
+---
+import "../styles/global.css";
+import YtChannel from "../components/YtChannel.tsx";
+---
+
+<html lang="ja">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="generator" content={Astro.generator} />
+		<title>公式YouTube | ウェザーニュースLiVE アーカイブ</title>
+		<meta name="description" content="ウェザーニュース公式YouTubeの動画・ショート・ライブ" />
+	</head>
+	<body class="bg-neutral-50 dark:bg-neutral-950">
+		<YtChannel client:load />
+	</body>
+</html>
