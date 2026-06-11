@@ -4,12 +4,8 @@ name: Refresh broadcast data
 # 放送データを再生成してコミットする。push をトリガーに deploy.yml がサイトを再公開。
 # Mac の起動有無に依存しない完全クラウド更新。
 #
-# 事前準備（1回だけ・もとさんの操作）:
-#   1) GitHub で Fine-grained personal access token を作成
-#      - Repository access: Moto-Git/claude-ops のみ
-#      - Permissions: Contents = Read-only
-#   2) この wn-archive リポジトリの Settings → Secrets → Actions に
-#      CLAUDEOPS_TOKEN という名前で登録
+# 認証: ClaudeOps(private) への読み取り専用 SSH デプロイキーを使う。
+#   秘密鍵は wn-archive の Actions secret `CLAUDEOPS_DEPLOY_KEY` に登録済み。
 
 on:
   schedule:
@@ -25,11 +21,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Checkout ClaudeOps (private)
+      - name: Checkout ClaudeOps (private, read-only deploy key)
         uses: actions/checkout@v4
         with:
           repository: Moto-Git/claude-ops
-          token: ${{ secrets.CLAUDEOPS_TOKEN }}
+          ssh-key: ${{ secrets.CLAUDEOPS_DEPLOY_KEY }}
           path: claude-ops
           sparse-checkout: roles/publisher/output/watch-digest/wn-broadcasts.csv
           sparse-checkout-cone-mode: false
