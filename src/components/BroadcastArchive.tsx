@@ -4,9 +4,10 @@ type Broadcast = {
   date: string; slot: string; program: string;
   caster: string; weather: string; kind: string; video: string; title: string;
 };
+type NameCount = { name: string; count: number };
 type Meta = {
   total: number; days: number; rugby: number; years: string[];
-  casters: { name: string; count: number }[]; updated: string;
+  casters: NameCount[]; forecasters: NameCount[]; updated: string;
 };
 
 const PROGRAMS = ["モーニング", "サンシャイン", "コーヒータイム", "アフタヌーン", "イブニング", "ムーン"];
@@ -40,6 +41,8 @@ export default function BroadcastArchive({ meta }: { meta: Meta }) {
   const [kind, setKind] = useState("all");
   const [program, setProgram] = useState("all");
   const [year, setYear] = useState("all");
+  const [caster, setCaster] = useState("all");
+  const [forecaster, setForecaster] = useState("all");
   const [limit, setLimit] = useState(PAGE);
 
   useEffect(() => {
@@ -56,9 +59,11 @@ export default function BroadcastArchive({ meta }: { meta: Meta }) {
         (kind === "all" || b.kind === kind) &&
         (program === "all" || b.program === program) &&
         (year === "all" || b.date.startsWith(year)) &&
+        (caster === "all" || b.caster === caster) &&
+        (forecaster === "all" || b.weather === forecaster) &&
         (!nq || b.caster.replace(/\s/g, "").includes(nq))
     );
-  }, [broadcasts, q, kind, program, year]);
+  }, [broadcasts, q, kind, program, year, caster, forecaster]);
 
   const shown = filtered.slice(0, limit);
   const reset = () => setLimit(PAGE);
@@ -110,6 +115,35 @@ export default function BroadcastArchive({ meta }: { meta: Meta }) {
         {meta.years.map((y) => (
           <Chip key={y} active={year === y} onClick={() => { setYear(y); reset(); }}>{y}年</Chip>
         ))}
+      </div>
+
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-sm text-neutral-500">
+          キャスター別
+          <select
+            value={caster}
+            onChange={(e) => { setCaster(e.target.value); reset(); }}
+            className="h-10 rounded-lg border border-neutral-200 bg-transparent px-3 text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-neutral-700 dark:text-neutral-100"
+          >
+            <option value="all">すべてのキャスター</option>
+            {meta.casters.map((c) => (
+              <option key={c.name} value={c.name}>{c.name}（{c.count}）</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm text-neutral-500">
+          予報士別
+          <select
+            value={forecaster}
+            onChange={(e) => { setForecaster(e.target.value); reset(); }}
+            className="h-10 rounded-lg border border-neutral-200 bg-transparent px-3 text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-neutral-700 dark:text-neutral-100"
+          >
+            <option value="all">すべての予報士</option>
+            {meta.forecasters.map((c) => (
+              <option key={c.name} value={c.name}>{c.name}（{c.count}）</option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <p className="mb-3 text-sm text-neutral-500">

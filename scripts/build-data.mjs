@@ -53,21 +53,26 @@ const broadcasts = lines
   }))
   .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.slot < b.slot ? 1 : -1));
 
-// 集計（キャスター出演数・年一覧）
+// 集計（キャスター出演数・予報士出演数・年一覧）
 const casterCount = {};
+const foreCount = {};
 const years = new Set();
 for (const b of broadcasts) {
   if (b.caster) casterCount[b.caster] = (casterCount[b.caster] || 0) + 1;
+  if (b.weather) foreCount[b.weather] = (foreCount[b.weather] || 0) + 1;
   years.add(b.date.slice(0, 4));
 }
+const rank = (obj) =>
+  Object.entries(obj)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count]) => ({ name, count }));
 const meta = {
   total: broadcasts.length,
   days: new Set(broadcasts.map((b) => b.date)).size,
   rugby: broadcasts.filter((b) => b.kind === "rugby").length,
   years: [...years].sort().reverse(),
-  casters: Object.entries(casterCount)
-    .sort((a, b) => b[1] - a[1])
-    .map(([name, count]) => ({ name, count })),
+  casters: rank(casterCount),
+  forecasters: rank(foreCount),
   updated: new Date().toISOString().slice(0, 10),
 };
 
