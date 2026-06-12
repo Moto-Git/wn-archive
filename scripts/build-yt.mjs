@@ -49,7 +49,21 @@ function durationSec(iso) {
 
 function loadCache() {
   if (!FULL && existsSync(CACHE)) {
-    try { return JSON.parse(readFileSync(CACHE, "utf8")); } catch { /* 壊れていれば作り直す */ }
+    try { return JSON.parse(readFileSync(CACHE, "utf8")); } catch { /* 壊れていれば下のフォールバックへ */ }
+  }
+  // キャッシュが無い環境（CI等）では、コミット済みチャンクを差分の基準に復元する。
+  // これが無いと known が空になり毎回フル取得してしまう。
+  if (!FULL && existsSync(OUT_DIR)) {
+    const items = [];
+    for (const type of TYPES) {
+      for (const f of readdirSync(OUT_DIR)) {
+        if (new RegExp(`^${type}-\\d+\\.json$`).test(f)) {
+          try { for (const x of JSON.parse(readFileSync(join(OUT_DIR, f), "utf8"))) items.push({ ...x, type }); }
+          catch { /* 壊れたチャンクは無視 */ }
+        }
+      }
+    }
+    if (items.length) return { items };
   }
   return { items: [] };
 }
