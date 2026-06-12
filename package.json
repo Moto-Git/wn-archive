@@ -14,7 +14,9 @@
     "prebuild": "node scripts/build-data.mjs && node scripts/build-feeds.mjs && node scripts/build-yt.mjs",
     "predev": "node scripts/build-data.mjs && node scripts/build-feeds.mjs && node scripts/build-yt.mjs",
     "feeds": "node scripts/build-feeds.mjs",
-    "yt": "node scripts/build-yt.mjs"
+    "yt": "node scripts/build-yt.mjs",
+    "data:full": "WN_FULL=1 node scripts/build-data.mjs",
+    "dev:full": "WN_FULL=1 node scripts/build-data.mjs && astro dev"
   },
   "dependencies": {
     "@astrojs/react": "^5.0.7",
