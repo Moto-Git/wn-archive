@@ -2,7 +2,7 @@
 import "../../styles/global.css";
 import CasterDetail from "../../components/CasterDetail.tsx";
 import meta from "../../data/meta.json";
-import sns from "../../data/caster-sns.json";
+import profiles from "../../data/caster-profiles.json";
 
 export function getStaticPaths() {
   return meta.casters.map((c: { name: string; slug: string }) => ({
@@ -12,7 +12,7 @@ export function getStaticPaths() {
 }
 
 const { name } = Astro.props;
-const casterSns = (sns as Record<string, { x?: string; instagram?: string; youtube?: string }>)[name] ?? {};
+const profile = (profiles as Record<string, any>)[name.replace(/\s/g, "")] ?? {};
 ---
 
 <html lang="ja">
@@ -24,6 +24,6 @@ const casterSns = (sns as Record<string, { x?: string; instagram?: string; youtu
 		<meta name="description" content={`${name}が担当したウェザーニュースLiVEの放送一覧と統計`} />
 	</head>
 	<body class="bg-neutral-50 dark:bg-neutral-950">
-		<CasterDetail name={name} sns={casterSns} client:load />
+		<CasterDetail name={name} profile={profile} client:load />
 	</body>
 </html>

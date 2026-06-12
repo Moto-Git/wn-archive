@@ -29,20 +29,30 @@ function Bar({ rows }: { rows: { name: string; count: number }[] }) {
   );
 }
 
-type Sns = { x?: string; instagram?: string; youtube?: string };
+type Profile = {
+  code?: string; name?: string; kana?: string; photo?: string;
+  birthday?: string; blood?: string; birthplace?: string; hobby?: string;
+  url?: string; sns?: { x?: string; instagram?: string; tiktok?: string; youtube?: string };
+};
 
-function snsLinks(sns: Sns) {
-  const out: { label: string; url: string }[] = [];
-  if (sns.x) out.push({ label: "X", url: `https://x.com/${sns.x.replace(/^@/, "")}` });
-  if (sns.instagram) out.push({ label: "Instagram", url: `https://www.instagram.com/${sns.instagram.replace(/^@/, "")}/` });
-  if (sns.youtube)
-    out.push({ label: "YouTube", url: sns.youtube.startsWith("UC")
-      ? `https://www.youtube.com/channel/${sns.youtube}`
-      : `https://www.youtube.com/@${sns.youtube.replace(/^@/, "")}` });
-  return out;
+const SNS_META: Record<string, { label: string; cls: string }> = {
+  x: { label: "X", cls: "bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900" },
+  instagram: { label: "Instagram", cls: "bg-pink-100 text-pink-800 dark:bg-pink-950 dark:text-pink-300" },
+  tiktok: { label: "TikTok", cls: "bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-100" },
+  youtube: { label: "YouTube", cls: "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300" },
+};
+
+function age(birthday?: string) {
+  if (!birthday) return "";
+  const b = new Date(birthday.replace(/\//g, "-"));
+  if (isNaN(+b)) return "";
+  const now = new Date();
+  let a = now.getFullYear() - b.getFullYear();
+  if (now.getMonth() < b.getMonth() || (now.getMonth() === b.getMonth() && now.getDate() < b.getDate())) a--;
+  return `${a}歳`;
 }
 
-export default function CasterDetail({ name, sns = {} }: { name: string; sns?: Sns }) {
+export default function CasterDetail({ name, profile = {} }: { name: string; profile?: Profile }) {
   const [all, setAll] = useState<Broadcast[]>([]);
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(PAGE);
@@ -76,22 +86,47 @@ export default function CasterDetail({ name, sns = {} }: { name: string; sns?: S
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 text-neutral-900 dark:text-neutral-100">
-      <header className="mb-6">
-        <a href={import.meta.env.BASE_URL} className="text-sm text-neutral-500 hover:underline">← アーカイブに戻る</a>
-        <h1 className="mt-1 text-2xl font-medium">{name}</h1>
-        <p className="text-sm text-neutral-500">
-          {loading ? "読み込み中…" : `担当 ${mine.length.toLocaleString()} 放送 ・ ${stats.first?.slice(0, 4)}〜${stats.last?.slice(0, 4)}年`}
-        </p>
-        {snsLinks(sns).length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-2">
-            {snsLinks(sns).map((l) => (
-              <a key={l.label} href={l.url} target="_blank" rel="noreferrer"
-                 className="rounded-lg border border-neutral-200 px-3 py-1 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">
-                {l.label}
-              </a>
-            ))}
+      <a href={import.meta.env.BASE_URL} className="text-sm text-neutral-500 hover:underline">← アーカイブに戻る</a>
+
+      <header className="mt-3 mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center">
+          {profile.photo && (
+            <img src={profile.photo} alt={name}
+                 className="h-28 w-28 shrink-0 rounded-full border border-neutral-200 object-cover dark:border-neutral-700" />
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <h1 className="text-2xl font-medium">{name}</h1>
+              {profile.kana && <span className="text-sm text-neutral-400">{profile.kana}</span>}
+            </div>
+            <p className="mt-1 text-sm text-neutral-500">
+              {loading ? "読み込み中…" : `担当 ${mine.length.toLocaleString()} 放送 ・ ${stats.first?.slice(0, 4)}〜${stats.last?.slice(0, 4)}年`}
+            </p>
+
+            {(profile.birthday || profile.birthplace || profile.blood || profile.hobby) && (
+              <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 text-sm">
+                {profile.birthday && (
+                  <div><dt className="inline text-neutral-400">生年月日 </dt>
+                    <dd className="inline">{profile.birthday}{age(profile.birthday) && <span className="text-neutral-400">（{age(profile.birthday)}）</span>}</dd></div>
+                )}
+                {profile.birthplace && <div><dt className="inline text-neutral-400">出身 </dt><dd className="inline">{profile.birthplace}</dd></div>}
+                {profile.blood && <div><dt className="inline text-neutral-400">血液型 </dt><dd className="inline">{profile.blood}</dd></div>}
+                {profile.hobby && <div className="w-full"><dt className="inline text-neutral-400">趣味・特技 </dt><dd className="inline">{profile.hobby}</dd></div>}
+              </dl>
+            )}
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {profile.sns && Object.entries(profile.sns).map(([k, url]) => url && SNS_META[k] && (
+                <a key={k} href={url} target="_blank" rel="noreferrer"
+                   className={`rounded-lg px-3 py-1 text-xs font-medium ${SNS_META[k].cls}`}>{SNS_META[k].label}</a>
+              ))}
+              {profile.url && (
+                <a href={profile.url} target="_blank" rel="noreferrer"
+                   className="rounded-lg border border-neutral-200 px-3 py-1 text-xs text-neutral-500 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">公式プロフィール</a>
+              )}
+            </div>
           </div>
-        )}
+        </div>
       </header>
 
       {!loading && mine.length > 0 && (

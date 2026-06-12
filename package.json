@@ -11,12 +11,13 @@
     "preview": "astro preview",
     "astro": "astro",
     "data": "node scripts/build-data.mjs",
-    "prebuild": "node scripts/build-data.mjs && node scripts/build-feeds.mjs && node scripts/build-yt.mjs",
-    "predev": "node scripts/build-data.mjs && node scripts/build-feeds.mjs && node scripts/build-yt.mjs",
+    "prebuild": "node scripts/build-data.mjs && node scripts/build-feeds.mjs && node scripts/build-yt.mjs && node scripts/build-casters.mjs",
+    "predev": "node scripts/build-data.mjs && node scripts/build-feeds.mjs && node scripts/build-yt.mjs && node scripts/build-casters.mjs",
     "feeds": "node scripts/build-feeds.mjs",
     "yt": "node scripts/build-yt.mjs",
     "data:full": "WN_FULL=1 node scripts/build-data.mjs",
-    "dev:full": "WN_FULL=1 node scripts/build-data.mjs && astro dev"
+    "dev:full": "WN_FULL=1 node scripts/build-data.mjs && node scripts/build-casters.mjs && astro dev",
+    "casters": "node scripts/build-casters.mjs"
   },
   "dependencies": {
     "@astrojs/react": "^5.0.7",
