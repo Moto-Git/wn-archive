@@ -36,21 +36,46 @@ function parseCsv(text) {
   return rows;
 }
 
+// WN_FULL=1 のときだけ minorin 由来のキャスター対応を含む「フル版」を別ファイルに出す（ローカル専用）。
+// 既定（公開ビルド）は一次情報源のみ: 動画タイトル(YouTube)＋公式取得(timetable.json)由来のキャスターだけ。
+const FULL = process.env.WN_FULL === "1";
+
+// ウェザーニュースの公式キャスター（公開情報）。動画タイトルからの抽出に使う。
+const CASTERS = ["駒木 結衣", "戸北 美月", "小林 李衣奈", "小川 千奈", "魚住 茉由", "山岸 愛梨",
+  "青原 桃香", "大島 璃音", "岡本 結子 リサ", "松雪 彩花", "高山 奈々", "江川 清音", "川畑 玲",
+  "檜山 沙耶", "白井 ゆかり", "松本 真央", "内田 侑希", "田辺 真南葉", "福吉 貴文",
+  "角田 奈緒子", "武藤 彩芽", "眞家 泉"];
+const CASTER_NS = CASTERS.map((n) => [n.replace(/\s/g, ""), n]).sort((a, b) => b[0].length - a[0].length);
+
+// タイトル(YouTube)に含まれる公式キャスター名を抽出（一次情報源）。無ければ空。
+function casterFromTitle(title) {
+  const t = (title || "").replace(/\s/g, "");
+  for (const [ns, name] of CASTER_NS) if (t.includes(ns)) return name;
+  return "";
+}
+
 const raw = readFileSync(CSV, "utf8");
 const [header, ...lines] = parseCsv(raw);
 const idx = Object.fromEntries(header.map((h, i) => [h, i]));
 const broadcasts = lines
   .filter((r) => r[idx.video_id])
-  .map((r) => ({
-    date: r[idx.date],
-    slot: r[idx.slot],
-    program: r[idx.program],
-    caster: r[idx.caster],
-    weather: r[idx.weather_caster],
-    kind: r[idx.kind] || "live",
-    video: r[idx.video_id],
-    title: r[idx.title],
-  }))
+  .map((r) => {
+    const source = r[idx.source];
+    const rawCaster = r[idx.caster];
+    // 公開: タイトル抽出 → 公式取得(official)のみ採用。minorin由来は出さない。
+    const pubCaster = casterFromTitle(r[idx.title]) || (source === "official" ? rawCaster : "");
+    const pubWeather = source === "official" ? r[idx.weather_caster] : "";
+    return {
+      date: r[idx.date],
+      slot: r[idx.slot],
+      program: r[idx.program],
+      caster: FULL ? rawCaster : pubCaster,
+      weather: FULL ? r[idx.weather_caster] : pubWeather,
+      kind: r[idx.kind] || "live",
+      video: r[idx.video_id],
+      title: r[idx.title],
+    };
+  })
   .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.slot < b.slot ? 1 : -1));
 
 // 集計（キャスター出演数・予報士出演数・年一覧）
@@ -76,13 +101,14 @@ const meta = {
   updated: new Date().toISOString().slice(0, 10),
 };
 
-// 大きい放送配列は public/ に置きクライアントで非同期fetch。metaは小さいのでビルド時import。
-const dataOut = resolve(__dir, "../public/broadcasts.json");
-const metaOut = resolve(__dir, "../src/data/meta.json");
+// 公開ビルド: broadcasts.json / meta.json（一次情報源のみ・コミット対象）
+// フルビルド(WN_FULL=1): broadcasts-full.json / meta-full.json（minorin込み・gitignore・ローカル専用）
+const dataOut = resolve(__dir, FULL ? "../public/broadcasts-full.json" : "../public/broadcasts.json");
+const metaOut = resolve(__dir, FULL ? "../src/data/meta-full.json" : "../src/data/meta.json");
 mkdirSync(dirname(dataOut), { recursive: true });
 mkdirSync(dirname(metaOut), { recursive: true });
 writeFileSync(dataOut, JSON.stringify(broadcasts));
 writeFileSync(metaOut, JSON.stringify(meta));
-console.log(`✓ ${broadcasts.length} 件 / ${meta.days} 日 / キャスター${meta.casters.length}名`);
+console.log(`✓ ${FULL ? "[フル/ローカル専用] " : "[公開] "}${broadcasts.length} 件 / ${meta.days} 日 / キャスター${meta.casters.length}名`);
 console.log(`  → ${dataOut}`);
 console.log(`  → ${metaOut}`);

@@ -34,9 +34,10 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
   );
 }
 
-export default function BroadcastArchive({ meta }: { meta: Meta }) {
+export default function BroadcastArchive() {
   const [broadcasts, setBroadcasts] = useState<Broadcast[]>([]);
   const [loading, setLoading] = useState(true);
+  const [full, setFull] = useState(false);
   const [q, setQ] = useState("");
   const [kind, setKind] = useState("all");
   const [program, setProgram] = useState("all");
@@ -46,11 +47,36 @@ export default function BroadcastArchive({ meta }: { meta: Meta }) {
   const [limit, setLimit] = useState(PAGE);
 
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}broadcasts.json`)
-      .then((r) => r.json())
+    const base = import.meta.env.BASE_URL;
+    // ?full=1 のときだけローカル専用のフル版(minorin込み)を試す。無ければ公開版にフォールバック。
+    const wantFull = new URLSearchParams(window.location.search).get("full") === "1";
+    const load = (url: string) => fetch(url).then((r) => { if (!r.ok) throw 0; return r.json(); });
+    (wantFull
+      ? load(`${base}broadcasts-full.json`).then((d) => { setFull(true); return d; })
+          .catch(() => load(`${base}broadcasts.json`))
+      : load(`${base}broadcasts.json`)
+    )
       .then((d: Broadcast[]) => { setBroadcasts(d); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
+
+  const meta = useMemo(() => {
+    const c: Record<string, number> = {}, f: Record<string, number> = {}, y = new Set<string>();
+    for (const b of broadcasts) {
+      if (b.caster) c[b.caster] = (c[b.caster] || 0) + 1;
+      if (b.weather) f[b.weather] = (f[b.weather] || 0) + 1;
+      y.add(b.date.slice(0, 4));
+    }
+    const rank = (o: Record<string, number>) =>
+      Object.entries(o).sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count }));
+    return {
+      total: broadcasts.length,
+      days: new Set(broadcasts.map((b) => b.date)).size,
+      rugby: broadcasts.filter((b) => b.kind === "rugby").length,
+      years: [...y].sort().reverse(),
+      casters: rank(c), forecasters: rank(f),
+    };
+  }, [broadcasts]);
 
   const filtered = useMemo(() => {
     const nq = q.replace(/\s/g, "");
@@ -213,7 +239,8 @@ export default function BroadcastArchive({ meta }: { meta: Meta }) {
       )}
 
       <footer className="mt-10 text-center text-xs text-neutral-400">
-        データ更新: {meta.updated} ・ 出典: 公式番組表 / minorin
+        {full && <span className="mr-2 rounded bg-amber-100 px-2 py-0.5 text-amber-800 dark:bg-amber-950 dark:text-amber-300">フル表示（ローカル専用）</span>}
+        出典: ウェザーニュース公式 / YouTube
       </footer>
     </div>
   );

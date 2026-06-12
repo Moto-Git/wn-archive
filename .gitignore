@@ -23,3 +23,7 @@ pnpm-debug.log*
 # jetbrains setting folder
 .idea/
 auto-publish.log
+
+# minorin込みフル版（ローカル専用・公開しない）
+public/broadcasts-full.json
+src/data/meta-full.json
