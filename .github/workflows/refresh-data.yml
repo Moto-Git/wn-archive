@@ -34,14 +34,21 @@ jobs:
         with:
           node-version: 22
 
-      - name: Regenerate data
+      - name: Regenerate broadcast data
         run: node scripts/build-data.mjs claude-ops/roles/publisher/output/watch-digest/wn-broadcasts.csv
+
+      - name: Refresh feeds & YouTube
+        env:
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
+        run: |
+          node scripts/build-feeds.mjs || true
+          node scripts/build-yt.mjs || true
 
       - name: Commit if changed
         run: |
           git config user.name  "wn-archive-bot"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/broadcasts.json src/data/meta.json
+          git add public/broadcasts.json src/data/meta.json public/updates.json public/wn-youtube.json
           if git diff --cached --quiet; then
             echo "変更なし"
           else
