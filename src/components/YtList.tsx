@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
-type Item = { id: string; title: string; date: string; sec: number };
+type Item = { id: string; title: string; date: string; sec: number; caster?: string; weather?: string };
 type ChunkInfo = { file: string; n: number; from: string; to: string };
 type Index = { updated: string; type: string; total: number; chunkSize: number; chunks: ChunkInfo[] };
 
@@ -48,6 +48,8 @@ export default function YtList({ type }: { type: YtType }) {
 
   const [sort, setSort] = useState("new");
   const [year, setYear] = useState("all");
+  const [caster, setCaster] = useState("all");
+  const [forecaster, setForecaster] = useState("all");
   const [q, setQ] = useState("");
   const [limit, setLimit] = useState(PAGE);
 
@@ -104,10 +106,24 @@ export default function YtList({ type }: { type: YtType }) {
     return [...s].sort().reverse();
   }, [items]);
 
+  // ロード済みアイテムからキャスター・予報士を件数付きで集計（LIVEアーカイブと同様）。
+  const people = useMemo(() => {
+    const c: Record<string, number> = {}, f: Record<string, number> = {};
+    for (const it of items) {
+      if (it.caster) c[it.caster] = (c[it.caster] || 0) + 1;
+      if (it.weather) f[it.weather] = (f[it.weather] || 0) + 1;
+    }
+    const rank = (o: Record<string, number>) =>
+      Object.entries(o).sort((a, b) => b[1] - a[1]).map(([name, count]) => ({ name, count }));
+    return { casters: rank(c), forecasters: rank(f) };
+  }, [items]);
+
   const filtered = useMemo(() => {
     const nq = q.trim();
     let r = items.filter((it) =>
       (year === "all" || it.date.startsWith(year)) &&
+      (caster === "all" || it.caster === caster) &&
+      (forecaster === "all" || it.weather === forecaster) &&
       (!nq || it.title.includes(nq))
     );
     r = r.slice().sort((a, b) => {
@@ -117,7 +133,7 @@ export default function YtList({ type }: { type: YtType }) {
       return a.sec - b.sec; // short
     });
     return r;
-  }, [items, year, q, sort]);
+  }, [items, year, caster, forecaster, q, sort]);
 
   const shown = filtered.slice(0, limit);
   const reset = () => setLimit(PAGE);
@@ -159,6 +175,37 @@ export default function YtList({ type }: { type: YtType }) {
           <Chip key={y} active={year === y} onClick={() => { setYear(y); reset(); }}>{y}年</Chip>
         ))}
       </div>
+      {/* キャスター別・予報士別（タイトル抽出。読込済み分から集計） */}
+      {(people.casters.length > 0 || people.forecasters.length > 0) && (
+        <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {people.casters.length > 0 && (
+            <label className="flex flex-col gap-1 text-sm text-neutral-500">
+              キャスター別
+              <select value={caster} onChange={(e) => { setCaster(e.target.value); reset(); }}
+                className="h-10 rounded-lg border border-neutral-200 bg-transparent px-3 text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-neutral-700 dark:text-neutral-100">
+                <option value="all">すべてのキャスター</option>
+                {people.casters.map((c) => (<option key={c.name} value={c.name}>{c.name}（{c.count}）</option>))}
+              </select>
+              {caster !== "all" && (
+                <a href={`${base}caster/${caster.replace(/\s/g, "")}`} className="text-xs text-teal-700 hover:underline dark:text-teal-400">
+                  {caster} の詳細ページ（出演履歴・統計）→
+                </a>
+              )}
+            </label>
+          )}
+          {people.forecasters.length > 0 && (
+            <label className="flex flex-col gap-1 text-sm text-neutral-500">
+              予報士別
+              <select value={forecaster} onChange={(e) => { setForecaster(e.target.value); reset(); }}
+                className="h-10 rounded-lg border border-neutral-200 bg-transparent px-3 text-sm text-neutral-900 outline-none focus:border-neutral-400 dark:border-neutral-700 dark:text-neutral-100">
+                <option value="all">すべての予報士</option>
+                {people.forecasters.map((c) => (<option key={c.name} value={c.name}>{c.name}（{c.count}）</option>))}
+              </select>
+            </label>
+          )}
+        </div>
+      )}
+
       {/* タイトル検索 */}
       <input
         value={q}
@@ -188,7 +235,11 @@ export default function YtList({ type }: { type: YtType }) {
             </div>
             <div className="p-2.5">
               <p className="line-clamp-2 text-sm">{i.title}</p>
-              <p className="mt-1 text-xs text-neutral-400">{i.date?.slice(0, 4)}/{i.date?.slice(5).replace("-", "/")}</p>
+              <p className="mt-1 text-xs text-neutral-400">
+                {i.date?.slice(0, 4)}/{i.date?.slice(5).replace("-", "/")}
+                {i.caster && <span className="ml-1 text-teal-600 dark:text-teal-400">· {i.caster}</span>}
+                {i.weather && <span className="ml-1">／{i.weather}</span>}
+              </p>
             </div>
           </a>
         ))}

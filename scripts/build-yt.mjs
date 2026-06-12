@@ -15,6 +15,7 @@ import { homedir } from "node:os";
 const __dir = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = resolve(__dir, "../public/wn-yt");
 const CACHE = resolve(__dir, ".cache/wn-yt-all.json");
+const BROADCASTS = resolve(__dir, "../public/broadcasts.json");
 const CHANNEL = "UCNsidkYpIAQ4QaufptQBPHQ";
 const CHUNK = 500;                        // 1チャンクの件数
 const TYPES = ["video", "short", "live"];
@@ -45,6 +46,56 @@ function durationSec(iso) {
   const m = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(iso || "");
   if (!m) return 0;
   return (+(m[1] || 0)) * 3600 + (+(m[2] || 0)) * 60 + (+(m[3] || 0));
+}
+
+// --- キャスター/予報士のタイトル抽出（一次情報源のみ） ---
+const norm = (s) => (s || "").replace(/\s/g, "");
+
+// LIVEアーカイブ(broadcasts.json)のキャスター名を辞書に（公開済みの一次情報）。
+function loadCasterDict() {
+  const dict = new Map(); // norm名 -> 表示名（スペース入り）
+  if (existsSync(BROADCASTS)) {
+    try {
+      for (const b of JSON.parse(readFileSync(BROADCASTS, "utf8")))
+        if (b.caster) dict.set(norm(b.caster), b.caster);
+    } catch { /* 無ければキャスター辞書なしで続行 */ }
+  }
+  return dict;
+}
+
+// 公式LIVEタイトル「〈ウェザーニュースLiVE…・キャスター／予報士〉」の予報士名を抽出。
+// キャスター名は除外し、頻度≥3でノイズ（天気用語等）を排除した辞書を作る。
+function buildForecasterDict(items, casterNorms) {
+  const pat = /〈ウェザーニュースLiVE[^〉]*?・[^／〉]+／([^〉／]+)/;
+  const freq = new Map(); // norm名 -> {count, name}
+  for (const it of items) {
+    const m = pat.exec(it.title);
+    if (!m) continue;
+    const n = norm(m[1]);
+    if (n.length < 2 || n.length > 6 || casterNorms.has(n)) continue;
+    const e = freq.get(n) || { count: 0, name: n };
+    e.count++; freq.set(n, e);
+  }
+  const dict = new Map();
+  for (const [n, e] of freq) if (e.count >= 3) dict.set(n, e.name);
+  return dict;
+}
+
+// タイトルに含まれる人物を辞書から判定（最初に一致した1名）。
+function matchPerson(title, dict) {
+  const t = norm(title);
+  for (const [n, name] of dict) if (t.includes(n)) return name;
+  return "";
+}
+// キャスターは「{姓}キャスター」表記（例: 白井キャスター）もフォールバックで拾う。
+function matchCaster(title, dict) {
+  const direct = matchPerson(title, dict);
+  if (direct) return direct;
+  for (const name of dict.values()) {
+    const sei = name.split(/\s/)[0];
+    if (sei && title.includes(sei + "キャスター")) return name;
+  }
+  return "";
 }
 
 function loadCache() {
@@ -133,7 +184,13 @@ function emit(all) {
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
     const chunks = [];
     for (let i = 0; i < items.length; i += CHUNK) {
-      const part = items.slice(i, i + CHUNK);
+      // 空の caster/weather は省いて配信サイズを抑える。
+      const part = items.slice(i, i + CHUNK).map((x) => {
+        const o = { id: x.id, title: x.title, date: x.date, sec: x.sec };
+        if (x.caster) o.caster = x.caster;
+        if (x.weather) o.weather = x.weather;
+        return o;
+      });
       const file = `${type}-${String(chunks.length).padStart(3, "0")}.json`;
       writeFileSync(join(OUT_DIR, file), JSON.stringify(part));
       chunks.push({ file, n: part.length, from: part[0]?.date || "", to: part.at(-1)?.date || "" });
@@ -164,6 +221,17 @@ async function main() {
   }
 
   const all = [...byId.values()];
+
+  // キャスター・予報士をタイトルから付与（毎回 title ベースで再判定＝冪等）。
+  const casters = loadCasterDict();
+  const fdict = buildForecasterDict(all, new Set(casters.keys()));
+  for (const it of all) {
+    it.caster = matchCaster(it.title, casters);
+    it.weather = matchPerson(it.title, fdict);
+  }
+  const tagged = all.filter((x) => x.caster).length;
+  console.log(`  人物タグ: キャスター辞書${casters.size}名 / 予報士辞書${fdict.size}名 → ${tagged}本にキャスター付与`);
+
   mkdirSync(dirname(CACHE), { recursive: true });
   writeFileSync(CACHE, JSON.stringify({ updated: new Date().toISOString(), items: all }));
 
