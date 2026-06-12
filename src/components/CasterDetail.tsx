@@ -29,7 +29,20 @@ function Bar({ rows }: { rows: { name: string; count: number }[] }) {
   );
 }
 
-export default function CasterDetail({ name }: { name: string }) {
+type Sns = { x?: string; instagram?: string; youtube?: string };
+
+function snsLinks(sns: Sns) {
+  const out: { label: string; url: string }[] = [];
+  if (sns.x) out.push({ label: "X", url: `https://x.com/${sns.x.replace(/^@/, "")}` });
+  if (sns.instagram) out.push({ label: "Instagram", url: `https://www.instagram.com/${sns.instagram.replace(/^@/, "")}/` });
+  if (sns.youtube)
+    out.push({ label: "YouTube", url: sns.youtube.startsWith("UC")
+      ? `https://www.youtube.com/channel/${sns.youtube}`
+      : `https://www.youtube.com/@${sns.youtube.replace(/^@/, "")}` });
+  return out;
+}
+
+export default function CasterDetail({ name, sns = {} }: { name: string; sns?: Sns }) {
   const [all, setAll] = useState<Broadcast[]>([]);
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(PAGE);
@@ -69,6 +82,16 @@ export default function CasterDetail({ name }: { name: string }) {
         <p className="text-sm text-neutral-500">
           {loading ? "読み込み中…" : `担当 ${mine.length.toLocaleString()} 放送 ・ ${stats.first?.slice(0, 4)}〜${stats.last?.slice(0, 4)}年`}
         </p>
+        {snsLinks(sns).length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {snsLinks(sns).map((l) => (
+              <a key={l.label} href={l.url} target="_blank" rel="noreferrer"
+                 className="rounded-lg border border-neutral-200 px-3 py-1 text-sm text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800">
+                {l.label}
+              </a>
+            ))}
+          </div>
+        )}
       </header>
 
       {!loading && mine.length > 0 && (
