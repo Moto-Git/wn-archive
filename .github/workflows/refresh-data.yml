@@ -48,7 +48,7 @@ jobs:
         run: |
           git config user.name  "wn-archive-bot"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add public/broadcasts.json src/data/meta.json public/updates.json public/wn-youtube.json
+          git add public/broadcasts.json src/data/meta.json public/updates.json public/wn-yt/
           if git diff --cached --quiet; then
             echo "変更なし"
           else
