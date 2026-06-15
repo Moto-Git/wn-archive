@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import LiveNowBanner from "./LiveNowBanner";
 
 type Broadcast = {
   date: string; slot: string; program: string;
@@ -119,6 +120,8 @@ export default function BroadcastArchive() {
           className="h-10 w-full rounded-lg border border-neutral-200 bg-transparent px-3 text-sm outline-none focus:border-neutral-400 sm:w-64 dark:border-neutral-700"
         />
       </header>
+
+      <LiveNowBanner base={import.meta.env.BASE_URL} />
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((s) => (

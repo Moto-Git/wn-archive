@@ -193,7 +193,17 @@ async function fetchLiveNow() {
     }
   };
   const [liveIds, upIds] = await Promise.all([grab("live"), grab("upcoming")]);
-  const ids = [...new Set([...liveIds, ...upIds])];
+  const pending = new Set([...liveIds, ...upIds]);  // 今まさにLIVE中/配信予定 → アーカイブから除外
+
+  // 前回スナップショットのIDも合わせて再取得する。前回 live/upcoming だったが
+  // 既に配信が終わったものは、最新の duration/actualEndTime でアーカイブに正しく取り込む。
+  let prevIds = [];
+  try {
+    const prev = JSON.parse(readFileSync(join(OUT_DIR, "live-now.json"), "utf8"));
+    prevIds = [...(prev.live || []), ...(prev.upcoming || [])].map((x) => x.id);
+  } catch { /* 初回など前回ファイルが無ければスキップ */ }
+
+  const ids = [...new Set([...pending, ...prevIds])];
   const detail = new Map();
   if (ids.length) {
     const d = await api("videos", {
@@ -221,11 +231,12 @@ async function fetchLiveNow() {
       .sort((a, b) => (a.scheduled < b.scheduled ? -1 : 1)),
   };
   writeFileSync(join(OUT_DIR, "live-now.json"), JSON.stringify(snap));
-  return { snap, detail };
+  return { snap, detail, pending };
 }
 
 // type別に新しい順でチャンク分割して書き出す。既存の {type}-*.json は一掃してから出す。
-function emit(all) {
+// pending（現在LIVE中/配信予定）は完成済みアーカイブではないので除外し、live-now.json のみで扱う。
+function emit(all, pending = new Set()) {
   mkdirSync(OUT_DIR, { recursive: true });
   for (const f of readdirSync(OUT_DIR)) {
     if (/^(video|short|live)(-\d+)?\.json$/.test(f)) rmSync(join(OUT_DIR, f));
@@ -233,7 +244,7 @@ function emit(all) {
   const updated = new Date().toISOString().slice(0, 16);
   const summary = {};
   for (const type of TYPES) {
-    const items = all.filter((x) => x.type === type)
+    const items = all.filter((x) => x.type === type && !pending.has(x.id))
       .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
     const chunks = [];
     for (let i = 0; i < items.length; i += CHUNK) {
@@ -275,9 +286,9 @@ async function main() {
 
   // 現在LIVE中・配信予定のスナップショットを取得（search 各100 unit）。
   // 取得した詳細はアーカイブ側にも反映し、放送済みになった配信のメタを最新化する。
-  const { snap, detail } = await fetchLiveNow();
+  const { snap, detail, pending } = await fetchLiveNow();
   for (const v of detail.values()) byId.set(v.id, shapeVideo(v));
-  console.log(`  live-now: LIVE中${snap.live.length}件 / 配信予定${snap.upcoming.length}件`);
+  console.log(`  live-now: LIVE中${snap.live.length}件 / 配信予定${snap.upcoming.length}件（アーカイブから除外）`);
 
   const all = [...byId.values()];
 
@@ -294,7 +305,7 @@ async function main() {
   mkdirSync(dirname(CACHE), { recursive: true });
   writeFileSync(CACHE, JSON.stringify({ updated: new Date().toISOString(), items: all }));
 
-  const summary = emit(all);
+  const summary = emit(all, pending);
   console.log(`✓ wn-yt 出力: 動画${summary.video} / ショート${summary.short} / ライブ${summary.live}（計${all.length}） → ${OUT_DIR}`);
 }
 main().catch((e) => { console.error("✗ build-yt 失敗:", e.message); process.exit(1); });
