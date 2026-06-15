@@ -1,0 +1,61 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+// JSON は import せず fs で読む（dev の Vite import.meta 変換バグ回避。youtube/index.astro と同方式）。
+const dataDir = resolve(process.cwd(), "src/data");
+const meta = JSON.parse(readFileSync(resolve(dataDir, "meta.json"), "utf8"));
+const profiles = JSON.parse(readFileSync(resolve(dataDir, "caster-profiles.json"), "utf8"));
+
+const base = import.meta.env.BASE_URL;
+
+const casters = meta.casters.map((c: { name: string; count: number; slug: string }) => {
+  const key = c.name.replace(/\s/g, "");
+  const p = profiles[key] ?? {};
+  return { name: c.name, count: c.count, slug: c.slug, photo: p.photo ?? "", initial: key.charAt(0) };
+});
+---
+
+<Layout
+	title="キャスター一覧 | ウェザーニュースLiVE アーカイブ"
+	description="ウェザーニュースLiVEに出演するキャスターの一覧。各キャスターの出演履歴・統計ページへ。"
+	active="caster"
+>
+	<div class="mx-auto max-w-5xl px-4 py-8">
+		<header class="mb-6">
+			<h1 class="text-2xl font-medium">キャスター</h1>
+			<p class="text-sm text-neutral-500">出演回数順。名前をタップすると出演履歴・統計・プロフィールが見られます。</p>
+		</header>
+
+		<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+			{casters.map((c) => (
+				<li>
+					<a
+						href={base + "caster/" + c.slug}
+						class="group flex h-full flex-col items-center gap-3 rounded-2xl border border-neutral-200 bg-white p-4 text-center transition-colors hover:border-sky-400 dark:border-neutral-800 dark:bg-neutral-900"
+					>
+						{c.photo ? (
+							<img
+								src={c.photo}
+								alt={c.name + " のプロフィール写真"}
+								loading="lazy"
+								width="80"
+								height="80"
+								class="h-20 w-20 rounded-full object-cover ring-1 ring-neutral-200 dark:ring-neutral-700"
+							/>
+						) : (
+							<span class="flex h-20 w-20 items-center justify-center rounded-full bg-sky-100 text-2xl font-medium text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+								{c.initial}
+							</span>
+						)}
+						<div class="flex flex-col gap-0.5">
+							<span class="font-medium leading-tight group-hover:text-sky-700 dark:group-hover:text-sky-400">{c.name}</span>
+							<span class="text-xs tabular-nums text-neutral-500">{c.count.toLocaleString()} 放送</span>
+						</div>
+					</a>
+				</li>
+			))}
+		</ul>
+	</div>
+</Layout>

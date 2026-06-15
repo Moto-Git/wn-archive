@@ -1,5 +1,5 @@
 ---
-import "../../styles/global.css";
+import Layout from "../../layouts/Layout.astro";
 import CasterDetail from "../../components/CasterDetail.tsx";
 import meta from "../../data/meta.json";
 import profiles from "../../data/caster-profiles.json";
@@ -15,15 +15,10 @@ const { name } = Astro.props;
 const profile = (profiles as Record<string, any>)[name.replace(/\s/g, "")] ?? {};
 ---
 
-<html lang="ja">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<meta name="generator" content={Astro.generator} />
-		<title>{name} | ウェザーニュースLiVE アーカイブ</title>
-		<meta name="description" content={`${name}が担当したウェザーニュースLiVEの放送一覧と統計`} />
-	</head>
-	<body class="bg-neutral-50 dark:bg-neutral-950">
-		<CasterDetail name={name} profile={profile} client:load />
-	</body>
-</html>
+<Layout
+	title={`${name} | ウェザーニュースLiVE アーカイブ`}
+	description={`${name}が担当したウェザーニュースLiVEの放送一覧と統計`}
+	active="caster"
+>
+	<CasterDetail name={name} profile={profile} client:idle />
+</Layout>

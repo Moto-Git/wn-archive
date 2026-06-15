@@ -21,7 +21,7 @@ function Bar({ rows }: { rows: { name: string; count: number }[] }) {
       {rows.map((r) => (
         <div key={r.name} className="flex items-center gap-2 text-sm">
           <span className="w-28 shrink-0 truncate text-neutral-600 dark:text-neutral-300">{r.name}</span>
-          <span className="h-2 rounded bg-teal-500/70" style={{ width: `${(r.count / max) * 100}%`, minWidth: 4 }} />
+          <span className="h-2 rounded bg-sky-500/70" style={{ width: `${(r.count / max) * 100}%`, minWidth: 4 }} />
           <span className="text-xs text-neutral-400">{r.count}</span>
         </div>
       ))}
@@ -86,7 +86,11 @@ export default function CasterDetail({ name, profile = {} }: { name: string; pro
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 text-neutral-900 dark:text-neutral-100">
-      <a href={import.meta.env.BASE_URL} className="text-sm text-neutral-500 hover:underline">← アーカイブに戻る</a>
+      <nav className="flex items-center gap-1 text-sm text-neutral-500">
+        <a href={`${import.meta.env.BASE_URL}caster/`} className="hover:text-sky-700 hover:underline dark:hover:text-sky-400">キャスター一覧</a>
+        <span className="text-neutral-300 dark:text-neutral-600">/</span>
+        <span className="text-neutral-700 dark:text-neutral-300">{name}</span>
+      </nav>
 
       <header className="mt-3 mb-6 overflow-hidden rounded-2xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900">
         <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center">
@@ -171,7 +175,7 @@ export default function CasterDetail({ name, profile = {} }: { name: string; pro
                   </div>
                   <div className="flex items-center justify-between gap-2 p-3">
                     <span className="text-xs text-neutral-500">{dateLabel(b.date)}</span>
-                    <span className={`rounded-md px-2 py-0.5 text-xs ${rugby ? "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300" : "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300"}`}>
+                    <span className={`rounded-md px-2 py-0.5 text-xs ${rugby ? "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300" : "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300"}`}>
                       {rugby ? "ラグビー特番" : "LIVE"}
                     </span>
                   </div>

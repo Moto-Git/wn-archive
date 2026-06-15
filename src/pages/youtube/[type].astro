@@ -1,5 +1,5 @@
 ---
-import "../../styles/global.css";
+import Layout from "../../layouts/Layout.astro";
 import YtList from "../../components/YtList.tsx";
 
 const LABEL: Record<string, string> = { video: "動画", short: "ショート", live: "ライブ" };
@@ -11,15 +11,10 @@ export function getStaticPaths() {
 const { type } = Astro.params as { type: "video" | "short" | "live" };
 ---
 
-<html lang="ja">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<meta name="generator" content={Astro.generator} />
-		<title>公式YouTube・{LABEL[type]} | ウェザーニュースLiVE アーカイブ</title>
-		<meta name="description" content={`ウェザーニュース公式YouTubeの${LABEL[type]}一覧。並び替え・年別・タイトル検索に対応。`} />
-	</head>
-	<body class="bg-neutral-50 dark:bg-neutral-950">
-		<YtList type={type} client:load />
-	</body>
-</html>
+<Layout
+	title={`公式YouTube・${LABEL[type]} | ウェザーニュースLiVE アーカイブ`}
+	description={`ウェザーニュース公式YouTubeの${LABEL[type]}一覧。並び替え・年別・タイトル検索に対応。`}
+	active="youtube"
+>
+	<YtList type={type} client:idle />
+</Layout>

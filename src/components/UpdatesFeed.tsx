@@ -32,8 +32,7 @@ export default function UpdatesFeed() {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 text-neutral-900 dark:text-neutral-100">
       <header className="mb-6">
-        <a href={import.meta.env.BASE_URL} className="text-sm text-neutral-500 hover:underline">← アーカイブに戻る</a>
-        <h1 className="mt-1 text-2xl font-medium">更新情報</h1>
+        <h1 className="text-2xl font-medium">更新情報</h1>
         <p className="text-sm text-neutral-500">ウェザーニュースの公式サイト・YouTube の新着</p>
       </header>
 

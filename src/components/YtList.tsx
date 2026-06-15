@@ -141,11 +141,7 @@ export default function YtList({ type }: { type: YtType }) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 text-neutral-900 dark:text-neutral-100">
       <header className="mb-6">
-        <span className="flex flex-wrap gap-3 text-sm text-neutral-500">
-          <a href={base} className="hover:underline">← LiVEアーカイブ</a>
-          <a href={`${base}youtube/`} className="hover:underline">公式YouTube トップ →</a>
-        </span>
-        <h1 className="mt-1 text-2xl font-medium">公式YouTube・{m.label}</h1>
+        <h1 className="text-2xl font-medium">公式YouTube・{m.label}</h1>
         <p className="text-sm text-neutral-500">{m.desc}</p>
       </header>
 
@@ -191,7 +187,7 @@ export default function YtList({ type }: { type: YtType }) {
                 {people.casters.map((c) => (<option key={c.name} value={c.name}>{c.name}（{c.count}）</option>))}
               </select>
               {caster !== "all" && (
-                <a href={`${base}caster/${caster.replace(/\s/g, "")}`} className="text-xs text-teal-700 hover:underline dark:text-teal-400">
+                <a href={`${base}caster/${caster.replace(/\s/g, "")}`} className="text-xs text-sky-700 hover:underline dark:text-sky-400">
                   {caster} の詳細ページ（出演履歴・統計）→
                 </a>
               )}
@@ -267,7 +263,7 @@ export default function YtList({ type }: { type: YtType }) {
         </div>
       )}
 
-      {index?.updated && <footer className="mt-8 text-center text-xs text-neutral-400">データ更新: {index.updated} ／ 出典: ウェザーニュース公式 / YouTube</footer>}
+      {index?.updated && <footer className="mt-8 text-center text-xs text-neutral-400">データ更新: {index.updated}</footer>}
     </div>
   );
 }

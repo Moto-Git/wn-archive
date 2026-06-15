@@ -108,10 +108,6 @@ export default function BroadcastArchive() {
         <div>
           <h1 className="text-2xl font-medium">ウェザーニュースLiVE アーカイブ</h1>
           <p className="text-sm text-neutral-500">2022年〜現在の放送をキャスター・番組・日付で検索</p>
-          <span className="flex flex-wrap gap-3 text-sm text-neutral-500">
-            <a href={`${import.meta.env.BASE_URL}youtube/`} className="hover:underline">公式YouTube（動画・ショート・ライブ）→</a>
-            <a href={`${import.meta.env.BASE_URL}updates`} className="hover:underline">更新情報 →</a>
-          </span>
         </div>
         <input
           value={q}
@@ -166,7 +162,7 @@ export default function BroadcastArchive() {
           {caster !== "all" && (
             <a
               href={`${import.meta.env.BASE_URL}caster/${caster.replace(/\s/g, "")}`}
-              className="text-xs text-teal-700 hover:underline dark:text-teal-400"
+              className="text-xs text-sky-700 hover:underline dark:text-sky-400"
             >
               {caster} の詳細ページ（出演履歴・統計）→
             </a>
@@ -218,7 +214,7 @@ export default function BroadcastArchive() {
                   <span className="text-xs text-neutral-500">{dateLabel(b.date)}</span>
                   <span className={`rounded-md px-2 py-0.5 text-xs ${
                     rugby ? "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300"
-                          : "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300"}`}>
+                          : "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300"}`}>
                     {rugby ? "ラグビー特番" : "LIVE"}
                   </span>
                 </div>
@@ -241,10 +237,11 @@ export default function BroadcastArchive() {
         </div>
       )}
 
-      <footer className="mt-10 text-center text-xs text-neutral-400">
-        {full && <span className="mr-2 rounded bg-amber-100 px-2 py-0.5 text-amber-800 dark:bg-amber-950 dark:text-amber-300">フル表示（ローカル専用）</span>}
-        出典: ウェザーニュース公式 / YouTube
-      </footer>
+      {full && (
+        <footer className="mt-10 text-center text-xs text-neutral-400">
+          <span className="rounded bg-amber-100 px-2 py-0.5 text-amber-800 dark:bg-amber-950 dark:text-amber-300">フル表示（ローカル専用）</span>
+        </footer>
+      )}
     </div>
   );
 }

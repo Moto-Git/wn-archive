@@ -1,5 +1,5 @@
 ---
-import "../../styles/global.css";
+import Layout from "../../layouts/Layout.astro";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -21,37 +21,29 @@ const cards = [
 const updated = cards.map((c) => c.updated).filter(Boolean).sort().at(-1) || "";
 ---
 
-<html lang="ja">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1" />
-		<meta name="generator" content={Astro.generator} />
-		<title>公式YouTube | ウェザーニュースLiVE アーカイブ</title>
-		<meta name="description" content="ウェザーニュース公式YouTubeの動画・ショート・ライブをカテゴリ別に閲覧" />
-	</head>
-	<body class="bg-neutral-50 dark:bg-neutral-950">
-		<div class="mx-auto max-w-5xl px-4 py-8 text-neutral-900 dark:text-neutral-100">
-			<header class="mb-6">
-				<a href={base} class="text-sm text-neutral-500 hover:underline">← LiVEアーカイブに戻る</a>
-				<h1 class="mt-1 text-2xl font-medium">公式YouTube</h1>
-				<p class="text-sm text-neutral-500">ウェザーニュース公式チャンネルの動画をカテゴリ別に。各ページで並び替え・年別・タイトル検索ができます。</p>
-			</header>
+<Layout
+	title="公式YouTube | ウェザーニュースLiVE アーカイブ"
+	description="ウェザーニュース公式YouTubeの動画・ショート・ライブをカテゴリ別に閲覧"
+	active="youtube"
+>
+	<div class="mx-auto max-w-5xl px-4 py-8">
+		<header class="mb-6">
+			<h1 class="text-2xl font-medium">公式YouTube</h1>
+			<p class="text-sm text-neutral-500">ウェザーニュース公式チャンネルの動画をカテゴリ別に。各ページで並び替え・年別・タイトル検索ができます。</p>
+		</header>
 
-			<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-				{cards.map((c) => (
-					<a href={`${base}youtube/${c.type}`}
-						class={`group flex flex-col gap-2 rounded-2xl border border-neutral-200 bg-gradient-to-br ${c.accent} p-5 transition-colors hover:border-neutral-400 dark:border-neutral-800`}>
-						<div class="text-lg font-medium">{c.label}</div>
-						<div class="text-3xl font-semibold tabular-nums">{c.total.toLocaleString()}<span class="ml-1 text-sm font-normal text-neutral-500">本</span></div>
-						<div class="text-sm text-neutral-500">{c.desc}</div>
-						<div class="mt-1 text-sm text-teal-700 group-hover:underline dark:text-teal-400">一覧を見る →</div>
-					</a>
-				))}
-			</div>
-
-			<footer class="mt-10 text-center text-xs text-neutral-400">
-				{updated && <span>データ更新: {updated} ／ </span>}出典: ウェザーニュース公式 / YouTube
-			</footer>
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+			{cards.map((c) => (
+				<a href={`${base}youtube/${c.type}`}
+					class={`group flex flex-col gap-2 rounded-2xl border border-neutral-200 bg-gradient-to-br ${c.accent} p-5 transition-colors hover:border-sky-400 dark:border-neutral-800`}>
+					<div class="text-lg font-medium">{c.label}</div>
+					<div class="text-3xl font-semibold tabular-nums">{c.total.toLocaleString()}<span class="ml-1 text-sm font-normal text-neutral-500">本</span></div>
+					<div class="text-sm text-neutral-500">{c.desc}</div>
+					<div class="mt-1 text-sm text-sky-700 group-hover:underline dark:text-sky-400">一覧を見る →</div>
+				</a>
+			))}
 		</div>
-	</body>
-</html>
+
+		{updated && <p class="mt-8 text-center text-xs text-neutral-400">データ更新: {updated}</p>}
+	</div>
+</Layout>
