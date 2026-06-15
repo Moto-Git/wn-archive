@@ -4,6 +4,9 @@ type Item = { id: string; title: string; date: string; sec: number; caster?: str
 type ChunkInfo = { file: string; n: number; from: string; to: string };
 type Index = { updated: string; type: string; total: number; chunkSize: number; chunks: ChunkInfo[] };
 
+type LiveItem = { id: string; title: string; scheduled: string; started: string; viewers: number };
+type LiveNow = { checked: string; live: LiveItem[]; upcoming: LiveItem[] };
+
 type YtType = "video" | "short" | "live";
 
 const META: Record<YtType, { label: string; desc: string; badge: string }> = {
@@ -22,6 +25,24 @@ function dur(sec: number) {
   const m = Math.floor(sec / 60), s = sec % 60;
   return m >= 60 ? `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}:${String(s).padStart(2, "0")}`
                  : `${m}:${String(s).padStart(2, "0")}`;
+}
+
+// JST の「M/D HH:MM」表記。
+function jst(iso: string) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString("ja-JP", {
+    timeZone: "Asia/Tokyo", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+// from→to の差を「○日○時間○分」「○時間○分」「○分」で表す（経過/残りの両用）。
+function span(ms: number) {
+  if (ms < 0) ms = 0;
+  const min = Math.floor(ms / 60000);
+  const d = Math.floor(min / 1440), h = Math.floor((min % 1440) / 60), mm = min % 60;
+  if (d > 0) return `${d}日${h}時間`;
+  if (h > 0) return `${h}時間${mm}分`;
+  return `${mm}分`;
 }
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -53,7 +74,29 @@ export default function YtList({ type }: { type: YtType }) {
   const [q, setQ] = useState("");
   const [limit, setLimit] = useState(PAGE);
 
+  // ライブページのみ: 現在LIVE中・配信予定のスナップショットと、現在時刻ティック。
+  const [liveNow, setLiveNow] = useState<LiveNow | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
   const loadingRef = useRef(false);
+
+  // 現在LIVE中・配信予定を読み込む（ライブページのみ）。
+  useEffect(() => {
+    if (type !== "live") return;
+    let alive = true;
+    fetch(`${base}wn-yt/live-now.json`)
+      .then((r) => { if (!r.ok) throw 0; return r.json(); })
+      .then((d: LiveNow) => { if (alive) setLiveNow(d); })
+      .catch(() => { /* 無ければバナー非表示で続行 */ });
+    return () => { alive = false; };
+  }, [base, type]);
+
+  // カウントダウン用に現在時刻を30秒ごとに更新（ライブページのみ）。
+  useEffect(() => {
+    if (type !== "live") return;
+    const h = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(h);
+  }, [type]);
 
   // index を読み、最初のチャンクを表示
   useEffect(() => {
@@ -137,6 +180,11 @@ export default function YtList({ type }: { type: YtType }) {
   const shown = filtered.slice(0, limit);
   const reset = () => setLimit(PAGE);
 
+  // 現在LIVE中・配信予定バナー（ライブページのみ）。配信予定は閲覧時刻と比較して出し分け。
+  const liveCards = liveNow?.live ?? [];
+  const upcomingCards = liveNow?.upcoming ?? [];
+  const showLiveBanner = type === "live" && (liveCards.length > 0 || upcomingCards.length > 0);
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 text-neutral-900 dark:text-neutral-100">
       <header className="mb-6">
@@ -160,6 +208,76 @@ export default function YtList({ type }: { type: YtType }) {
           </a>
         ))}
       </div>
+
+      {/* 現在LIVE中・配信予定（ライブページのみ） */}
+      {showLiveBanner && (
+        <div className="mb-5 rounded-xl border border-neutral-200 bg-neutral-50 p-4 dark:border-neutral-800 dark:bg-neutral-900/60">
+          {liveCards.length > 0 && (
+            <>
+              <div className="mb-2 flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400">
+                <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-red-600 dark:bg-red-400" />
+                今LIVE中（{liveCards.length}）
+              </div>
+              <div className="mb-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {liveCards.map((v) => (
+                  <a key={v.id} href={`https://www.youtube.com/watch?v=${v.id}`} target="_blank" rel="noreferrer"
+                     className="flex gap-3 rounded-lg border border-red-200 bg-white p-2 hover:border-red-300 dark:border-red-950 dark:bg-neutral-900">
+                    <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded bg-neutral-100 dark:bg-neutral-800">
+                      <img loading="lazy" src={`https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`} alt="" className="h-full w-full object-cover" />
+                      <span className="absolute left-1 top-1 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-medium text-white">● LIVE</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-sm">{v.title}</p>
+                      <p className="mt-1 text-xs text-neutral-400">
+                        {v.started && `配信中・${span(now - Date.parse(v.started))}経過`}
+                        {v.viewers > 0 && ` ・ ${v.viewers.toLocaleString()}人視聴`}
+                      </p>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </>
+          )}
+
+          {upcomingCards.length > 0 && (
+            <>
+              <div className="mb-2 text-sm font-medium text-amber-600 dark:text-amber-400">
+                配信予定（{upcomingCards.length}）
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {upcomingCards.map((v) => {
+                  const t = Date.parse(v.scheduled);
+                  const future = now < t;
+                  return (
+                    <a key={v.id} href={`https://www.youtube.com/watch?v=${v.id}`} target="_blank" rel="noreferrer"
+                       className="flex gap-3 rounded-lg border border-amber-200 bg-white p-2 hover:border-amber-300 dark:border-amber-950 dark:bg-neutral-900">
+                      <div className="relative aspect-video w-28 shrink-0 overflow-hidden rounded bg-neutral-100 dark:bg-neutral-800">
+                        <img loading="lazy" src={`https://i.ytimg.com/vi/${v.id}/mqdefault.jpg`} alt="" className="h-full w-full object-cover" />
+                        <span className="absolute left-1 top-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-medium text-white">予定</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="line-clamp-2 text-sm">{v.title}</p>
+                        <p className="mt-1 text-xs text-neutral-400">
+                          {jst(v.scheduled)} 開始予定
+                          {v.scheduled && <span className="ml-1 text-amber-600 dark:text-amber-400">
+                            {future ? `（あと${span(t - now)}）` : "（まもなく）"}
+                          </span>}
+                        </p>
+                      </div>
+                    </a>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {liveNow?.checked && (
+            <p className="mt-3 text-[11px] text-neutral-400">
+              最終確認: {jst(liveNow.checked)}（LIVE中の状況は自動更新が1日1回のため、実際とずれる場合があります）
+            </p>
+          )}
+        </div>
+      )}
 
       {/* 並び替え */}
       <div className="mb-2 flex flex-wrap gap-2">

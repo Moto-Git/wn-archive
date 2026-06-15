@@ -144,6 +144,21 @@ async function collectIds(uploads, known) {
   return { ids, partial: false };
 }
 
+// videos.list の1件を {id,title,date,type,sec} に整形。
+function shapeVideo(v) {
+  const live = !!v.liveStreamingDetails;
+  const sec = durationSec(v.contentDetails?.duration);
+  // ショートは duration 近似（API はショートを区別しない）: 1〜60秒を short 扱い。
+  const type = live ? "live" : sec > 0 && sec <= 60 ? "short" : "video";
+  return {
+    id: v.id,
+    title: v.snippet.title,
+    date: (v.liveStreamingDetails?.actualStartTime || v.snippet.publishedAt || "").slice(0, 10),
+    type,
+    sec,
+  };
+}
+
 // videos.list で詳細を取得して {id,title,date,type,sec} に整形。
 async function fetchDetails(ids) {
   const out = [];
@@ -152,23 +167,61 @@ async function fetchDetails(ids) {
       part: "snippet,contentDetails,liveStreamingDetails",
       id: ids.slice(i, i + 50).join(","),
     });
-    for (const v of d.items || []) {
-      const live = !!v.liveStreamingDetails;
-      const sec = durationSec(v.contentDetails?.duration);
-      // ショートは duration 近似（API はショートを区別しない）: 1〜60秒を short 扱い。
-      const type = live ? "live" : sec > 0 && sec <= 60 ? "short" : "video";
-      out.push({
-        id: v.id,
-        title: v.snippet.title,
-        date: (v.liveStreamingDetails?.actualStartTime || v.snippet.publishedAt || "").slice(0, 10),
-        type,
-        sec,
-      });
-    }
+    for (const v of d.items || []) out.push(shapeVideo(v));
     if ((i / 50) % 10 === 0) process.stdout.write(`\r  詳細取得 ${Math.min(i + 50, ids.length)}/${ids.length}`);
   }
   if (ids.length) process.stdout.write("\n");
   return out;
+}
+
+// 現在「LIVE中」「配信予定」の動画を search.list で取得（各100 unit）。
+// 静的サイトはビルド時点のスナップショットしか持てないため、checked 時刻を併記して
+// フロントで「最終確認 HH:MM」と正直に示す。配信予定は scheduledStartTime を持たせ、
+// 閲覧時のブラウザ現在時刻と比較してカウントダウン表示する。
+async function fetchLiveNow() {
+  mkdirSync(OUT_DIR, { recursive: true });
+  const grab = async (eventType) => {
+    try {
+      const d = await api("search", {
+        part: "snippet", channelId: CHANNEL, eventType,
+        type: "video", maxResults: "10", order: "date",
+      });
+      return (d.items || []).map((i) => i.id.videoId).filter(Boolean);
+    } catch (e) {
+      console.log(`  ! live-now ${eventType} 取得失敗: ${e.message}`);
+      return [];
+    }
+  };
+  const [liveIds, upIds] = await Promise.all([grab("live"), grab("upcoming")]);
+  const ids = [...new Set([...liveIds, ...upIds])];
+  const detail = new Map();
+  if (ids.length) {
+    const d = await api("videos", {
+      part: "snippet,liveStreamingDetails,contentDetails",
+      id: ids.join(","),
+    });
+    for (const v of d.items || []) detail.set(v.id, v);
+  }
+  const pick = (id) => {
+    const v = detail.get(id);
+    if (!v) return null;
+    const ls = v.liveStreamingDetails || {};
+    return {
+      id,
+      title: v.snippet.title,
+      scheduled: ls.scheduledStartTime || "",
+      started: ls.actualStartTime || "",
+      viewers: ls.concurrentViewers ? +ls.concurrentViewers : 0,
+    };
+  };
+  const snap = {
+    checked: new Date().toISOString(),
+    live: liveIds.map(pick).filter(Boolean),
+    upcoming: upIds.map(pick).filter(Boolean)
+      .sort((a, b) => (a.scheduled < b.scheduled ? -1 : 1)),
+  };
+  writeFileSync(join(OUT_DIR, "live-now.json"), JSON.stringify(snap));
+  return { snap, detail };
 }
 
 // type別に新しい順でチャンク分割して書き出す。既存の {type}-*.json は一掃してから出す。
@@ -219,6 +272,12 @@ async function main() {
     const fresh = await fetchDetails(ids);
     for (const it of fresh) byId.set(it.id, it);
   }
+
+  // 現在LIVE中・配信予定のスナップショットを取得（search 各100 unit）。
+  // 取得した詳細はアーカイブ側にも反映し、放送済みになった配信のメタを最新化する。
+  const { snap, detail } = await fetchLiveNow();
+  for (const v of detail.values()) byId.set(v.id, shapeVideo(v));
+  console.log(`  live-now: LIVE中${snap.live.length}件 / 配信予定${snap.upcoming.length}件`);
 
   const all = [...byId.values()];
 
