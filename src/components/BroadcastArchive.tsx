@@ -7,8 +7,22 @@ type Broadcast = {
 };
 type NameCount = { name: string; count: number };
 type Meta = {
-  total: number; days: number; rugby: number; years: string[];
-  casters: NameCount[]; forecasters: NameCount[]; updated: string;
+  total: number; days: number; rugby: number;
+  event: number; hanabi: number; special: number; collab: number;
+  years: string[]; casters: NameCount[]; forecasters: NameCount[];
+};
+
+const KIND_LABEL: Record<string, string> = {
+  live: "LIVE", rugby: "ラグビー特番", event: "天体LIVE",
+  hanabi: "花火", special: "特別番組", collab: "コラボ",
+};
+const KIND_COLOR: Record<string, string> = {
+  live:    "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300",
+  rugby:   "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300",
+  event:   "bg-violet-100 text-violet-800 dark:bg-violet-950 dark:text-violet-300",
+  hanabi:  "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
+  special: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
+  collab:  "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
 };
 
 const PROGRAMS = ["モーニング", "サンシャイン", "コーヒータイム", "アフタヌーン", "イブニング", "ムーン"];
@@ -74,6 +88,10 @@ export default function BroadcastArchive() {
       total: broadcasts.length,
       days: new Set(broadcasts.map((b) => b.date)).size,
       rugby: broadcasts.filter((b) => b.kind === "rugby").length,
+      event: broadcasts.filter((b) => b.kind === "event").length,
+      hanabi: broadcasts.filter((b) => b.kind === "hanabi").length,
+      special: broadcasts.filter((b) => b.kind === "special").length,
+      collab: broadcasts.filter((b) => b.kind === "collab").length,
       years: [...y].sort().reverse(),
       casters: rank(c), forecasters: rank(f),
     };
@@ -99,7 +117,7 @@ export default function BroadcastArchive() {
     { label: "総放送数", value: meta.total.toLocaleString() },
     { label: "キャスター", value: meta.casters.length },
     { label: "収録日数", value: meta.days.toLocaleString() },
-    { label: "ラグビー特番", value: meta.rugby },
+    { label: "天体・花火", value: (meta.event + meta.hanabi).toLocaleString() },
   ];
 
   return (
@@ -131,7 +149,11 @@ export default function BroadcastArchive() {
       <div className="mb-2 flex flex-wrap gap-2">
         <Chip active={kind === "all"} onClick={() => { setKind("all"); reset(); }}>すべて</Chip>
         <Chip active={kind === "live"} onClick={() => { setKind("live"); reset(); }}>通常LIVE</Chip>
-        <Chip active={kind === "rugby"} onClick={() => { setKind("rugby"); reset(); }}>ラグビー特番</Chip>
+        {meta.rugby > 0 && <Chip active={kind === "rugby"} onClick={() => { setKind("rugby"); reset(); }}>ラグビー特番</Chip>}
+        {meta.event > 0 && <Chip active={kind === "event"} onClick={() => { setKind("event"); reset(); }}>天体LIVE</Chip>}
+        {meta.hanabi > 0 && <Chip active={kind === "hanabi"} onClick={() => { setKind("hanabi"); reset(); }}>花火中継</Chip>}
+        {meta.special > 0 && <Chip active={kind === "special"} onClick={() => { setKind("special"); reset(); }}>特別番組</Chip>}
+        {meta.collab > 0 && <Chip active={kind === "collab"} onClick={() => { setKind("collab"); reset(); }}>コラボ</Chip>}
       </div>
       <div className="mb-2 flex flex-wrap gap-2">
         <Chip active={program === "all"} onClick={() => { setProgram("all"); reset(); }}>全番組</Chip>
@@ -189,7 +211,8 @@ export default function BroadcastArchive() {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {shown.map((b) => {
-          const rugby = b.kind === "rugby";
+          const kindColor = KIND_COLOR[b.kind] ?? KIND_COLOR.live;
+          const kindLabel = KIND_LABEL[b.kind] ?? "LIVE";
           return (
             <a
               key={b.video + b.date + b.slot}
@@ -212,11 +235,7 @@ export default function BroadcastArchive() {
               <div className="flex flex-col gap-1.5 p-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs text-neutral-500">{dateLabel(b.date)}</span>
-                  <span className={`rounded-md px-2 py-0.5 text-xs ${
-                    rugby ? "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300"
-                          : "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300"}`}>
-                    {rugby ? "ラグビー特番" : "LIVE"}
-                  </span>
+                  <span className={`rounded-md px-2 py-0.5 text-xs ${kindColor}`}>{kindLabel}</span>
                 </div>
                 <div className="font-medium">{b.caster || "—"}</div>
                 {b.weather && <div className="text-xs text-neutral-400">天気 / {b.weather}</div>}

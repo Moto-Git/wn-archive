@@ -57,7 +57,7 @@ function casterFromTitle(title) {
 const raw = readFileSync(CSV, "utf8");
 const [header, ...lines] = parseCsv(raw);
 const idx = Object.fromEntries(header.map((h, i) => [h, i]));
-const broadcasts = lines
+let broadcasts = lines
   .filter((r) => r[idx.video_id])
   .map((r) => {
     const source = r[idx.source];
@@ -75,8 +75,30 @@ const broadcasts = lines
       video: r[idx.video_id],
       title: r[idx.title],
     };
-  })
-  .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.slot < b.slot ? 1 : -1));
+  });
+
+// specials.json（天体ライブ / 花火中継 / コラボ）をマージ
+const specialsPath = resolve(__dir, "../src/data/specials.json");
+if (existsSync(specialsPath)) {
+  const specials = JSON.parse(readFileSync(specialsPath, "utf8"));
+  const existingIds = new Set(broadcasts.map((b) => b.video));
+  for (const s of specials) {
+    if (existingIds.has(s.video)) continue; // CSV済みの動画は重複除外
+    if (!FULL && s.source !== "official") continue; // 公開はofficial(天体/花火)のみ
+    broadcasts.push({
+      date: s.date,
+      slot: s.slot || "",
+      program: s.program,
+      caster: casterFromTitle(s.title),
+      weather: "",
+      kind: s.kind,
+      video: s.video,
+      title: s.title,
+    });
+  }
+}
+
+broadcasts.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.slot < b.slot ? 1 : -1));
 
 // 集計（キャスター出演数・予報士出演数・年一覧）
 const casterCount = {};
@@ -95,6 +117,10 @@ const meta = {
   total: broadcasts.length,
   days: new Set(broadcasts.map((b) => b.date)).size,
   rugby: broadcasts.filter((b) => b.kind === "rugby").length,
+  event: broadcasts.filter((b) => b.kind === "event").length,
+  hanabi: broadcasts.filter((b) => b.kind === "hanabi").length,
+  special: broadcasts.filter((b) => b.kind === "special").length,
+  collab: broadcasts.filter((b) => b.kind === "collab").length,
   years: [...years].sort().reverse(),
   casters: rank(casterCount),
   forecasters: rank(foreCount),
