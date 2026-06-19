@@ -9,7 +9,10 @@ name: Refresh broadcast data
 
 on:
   schedule:
-    - cron: "0 22 * * *"   # 毎日 07:00 JST (= 22:00 UTC)
+    # 3時間ごと(UTC :40)。各放送(JST 05/08/11/14/17/20/23時)は約10分後にCSVへ取込まれるため、
+    # この頻度なら当日の番組が概ね1.5時間以内にサイトへ反映される。1日1回(朝のみ)だと当日が
+    # サンシャインまでしか出ない問題への対策。
+    - cron: "40 */3 * * *"
   workflow_dispatch:
 
 permissions:
