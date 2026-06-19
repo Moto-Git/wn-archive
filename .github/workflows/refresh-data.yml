@@ -37,6 +37,18 @@ jobs:
       - name: Regenerate broadcast data
         run: node scripts/build-data.mjs claude-ops/roles/publisher/output/watch-digest/wn-broadcasts.csv
 
+      # プライバシーガード: 公開リポジトリなのに完全版データ(minorin由来)が混入していないか検証する。
+      # 完全版 build-data.mjs を誤って cp すると FULL=true になり minorin・コラボが漏れるため、
+      # meta.full===true または collab>0 を検知したらコミットを止める。yml は cp 対象外で恒久的に効く。
+      - name: Verify public dataset (no minorin leak)
+        run: |
+          node -e '
+            const m = require("./src/data/meta.json");
+            if (m.full === true) { console.error("✗ meta.full=true（完全版 build-data.mjs が混入＝minorin漏れの恐れ）"); process.exit(1); }
+            if ((m.collab || 0) > 0) { console.error("✗ collab>0（minorin由来コラボが公開データに混入）"); process.exit(1); }
+            console.log(`✓ 公開データ確認: collab=${m.collab||0} / キャスター${m.casters.length}名（タイトル抽出+公式のみ）`);
+          '
+
       - name: Refresh feeds & YouTube
         env:
           YT_API_KEY: ${{ secrets.YT_API_KEY }}
