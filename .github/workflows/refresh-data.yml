@@ -18,6 +18,13 @@ on:
 permissions:
   contents: write
 
+# 実行の重なり対策: 同一ブランチの refresh は直列化する。実行中に次の cron が来ても
+# 割り込ませず（cancel-in-progress: false）、前の run が終わってから走らせる。
+# これで 2 つの run が同時にコミット＆push して競合するのを防ぐ。
+concurrency:
+  group: refresh-data-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   refresh:
     runs-on: ubuntu-latest
@@ -66,7 +73,19 @@ jobs:
           git add public/broadcasts.json src/data/meta.json public/updates.json public/wn-yt/
           if git diff --cached --quiet; then
             echo "変更なし"
-          else
-            git commit -m "data: 放送データ自動更新 $(date -u +%Y-%m-%d)"
-            git push
+            exit 0
           fi
+          git commit -m "data: 放送データ自動更新 $(date -u +%Y-%m-%d)"
+          # 手動 push や他 run とリモートが競合しても失敗しないよう、rebase して最大5回リトライ。
+          # データ系ファイルは prebuild で再生成されるため rebase 衝突しても自分の生成結果を採用する。
+          branch="${GITHUB_REF_NAME:-main}"
+          for i in 1 2 3 4 5; do
+            if git push origin "HEAD:${branch}"; then
+              echo "push 成功 (試行 ${i})"
+              exit 0
+            fi
+            echo "push 失敗。リモートを取り込んで再試行 (${i}/5)"
+            git pull --rebase -X ours origin "${branch}" || git rebase --abort || true
+          done
+          echo "::error::5回試行しても push できませんでした"
+          exit 1
