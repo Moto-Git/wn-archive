@@ -87,6 +87,9 @@ let broadcasts = lines
     broadcasts.filter((b) => b._source !== "official").map((b) => b.video));
   const seenOfficial = new Set();
   broadcasts = broadcasts.filter((b) => {
+    // 深夜の無人配信（番組名「（深夜）」でキャスター不在）は表示しない。24時間ループ映像を
+    // 日跨ぎで毎日拾った中身のない「—」カードで、アーカイブ本来の目的(キャスター出演記録)に不要。
+    if (b.program === "（深夜）" && !b.caster) return false;
     if (b._source !== "official") return true;
     if (confirmed.has(b.video)) return false;    // 確定ソースがある動画のofficial行は暫定＝除外
     if (seenOfficial.has(b.video)) return false; // official同士は最初(=早い枠)の1行のみ
