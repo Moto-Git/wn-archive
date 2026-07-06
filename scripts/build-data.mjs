@@ -74,8 +74,27 @@ let broadcasts = lines
       kind: r[idx.kind] || "live",
       video: r[idx.video_id],
       title: r[idx.title],
+      _source: source, // 重複排除用（出力前に削除）
     };
   });
+
+// 防御的重複排除: 深夜まで続く配信をライブ取得(official)が「（深夜）」枠として再記録すると
+// 同じ動画がアーカイブに二重表示される。取得側(watch-digest)でもガード済みだが、CSV に
+// 混入しても配信されないようここでも除外する（2026-07-06 重複表示バグの対策）。
+// ※minorin の同一動画・複数番組行（2022年頃の長時間配信は &t= 違いで正当）は残す。
+{
+  const confirmed = new Set(
+    broadcasts.filter((b) => b._source !== "official").map((b) => b.video));
+  const seenOfficial = new Set();
+  broadcasts = broadcasts.filter((b) => {
+    if (b._source !== "official") return true;
+    if (confirmed.has(b.video)) return false;    // 確定ソースがある動画のofficial行は暫定＝除外
+    if (seenOfficial.has(b.video)) return false; // official同士は最初(=早い枠)の1行のみ
+    seenOfficial.add(b.video);
+    return true;
+  });
+  for (const b of broadcasts) delete b._source;
+}
 
 // specials.json（天体ライブ / 花火中継 / コラボ）をマージ
 const specialsPath = resolve(__dir, "../src/data/specials.json");
