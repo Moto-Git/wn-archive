@@ -89,3 +89,15 @@ jobs:
           done
           echo "::error::5回試行しても push できませんでした"
           exit 1
+
+      # サイトを見に行かないと失敗に気づけない問題への対策（2026-07-24）。
+      # このジョブの直前ステップのいずれかが失敗したときだけ実行され、既存の
+      # ntfy.sh 通知(スマホアプリで購読中)へ即座に届く。
+      - name: Notify on failure
+        if: failure()
+        run: |
+          curl -fsS -X POST "https://ntfy.sh/${{ secrets.NTFY_TOPIC }}" \
+            -H "Title: wn-archive(公開版) refresh-data 失敗" \
+            -H "Priority: high" \
+            -H "Tags: claude-ops,warning" \
+            -d "公開版アーカイブの更新に失敗しました。詳細: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
