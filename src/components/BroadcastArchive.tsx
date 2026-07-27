@@ -60,6 +60,36 @@ export default function BroadcastArchive() {
   const [caster, setCaster] = useState("all");
   const [forecaster, setForecaster] = useState("all");
   const [limit, setLimit] = useState(PAGE);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const markCopied = (id: string) => {
+    setCopiedId(id);
+    setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1500);
+  };
+
+  const copyLink = (e: React.MouseEvent, url: string, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard.writeText(url).then(
+      () => markCopied(id),
+      () => {
+        // Clipboard API が使えない環境向けのフォールバック（古いブラウザ・権限制限時）。
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand("copy");
+          markCopied(id);
+        } catch {
+          // それでも失敗したら諦める（クリック自体は無害なので何もしない）。
+        }
+        document.body.removeChild(ta);
+      }
+    );
+  };
 
   useEffect(() => {
     const base = import.meta.env.BASE_URL;
@@ -213,10 +243,12 @@ export default function BroadcastArchive() {
         {shown.map((b) => {
           const kindColor = KIND_COLOR[b.kind] ?? KIND_COLOR.live;
           const kindLabel = KIND_LABEL[b.kind] ?? "LIVE";
+          const id = b.video + b.date + b.slot;
+          const url = `https://www.youtube.com/watch?v=${b.video}`;
           return (
             <a
-              key={b.video + b.date + b.slot}
-              href={`https://www.youtube.com/watch?v=${b.video}`}
+              key={id}
+              href={url}
               target="_blank"
               rel="noreferrer"
               className="group overflow-hidden rounded-xl border border-neutral-200 bg-white transition-colors hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900"
@@ -231,6 +263,14 @@ export default function BroadcastArchive() {
                 <span className="absolute left-2 top-2 rounded-md bg-black/65 px-2 py-0.5 text-xs text-white">
                   {b.slot} {b.program}
                 </span>
+                <button
+                  type="button"
+                  onClick={(e) => copyLink(e, url, id)}
+                  title="リンクをコピー"
+                  className="absolute right-2 top-2 rounded-md bg-black/65 px-2 py-0.5 text-xs text-white transition-colors hover:bg-black/80"
+                >
+                  {copiedId === id ? "コピー済み" : "🔗 コピー"}
+                </button>
               </div>
               <div className="flex flex-col gap-1.5 p-3">
                 <div className="flex items-center justify-between gap-2">
