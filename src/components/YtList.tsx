@@ -53,8 +53,38 @@ export default function YtList({ type }: { type: YtType }) {
   const [forecaster, setForecaster] = useState("all");
   const [q, setQ] = useState("");
   const [limit, setLimit] = useState(PAGE);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const loadingRef = useRef(false);
+
+  const markCopied = (id: string) => {
+    setCopiedId(id);
+    setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1500);
+  };
+
+  const copyLink = (e: React.MouseEvent, url: string, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard.writeText(url).then(
+      () => markCopied(id),
+      () => {
+        // Clipboard API が使えない環境向けのフォールバック（古いブラウザ・権限制限時）。
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand("copy");
+          markCopied(id);
+        } catch {
+          // それでも失敗したら諦める（クリック自体は無害なので何もしない）。
+        }
+        document.body.removeChild(ta);
+      }
+    );
+  };
 
   // index を読み、最初のチャンクを表示
   useEffect(() => {
@@ -225,13 +255,23 @@ export default function YtList({ type }: { type: YtType }) {
 
       {/* 一覧 */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        {shown.map((i) => (
-          <a key={i.id} href={`https://www.youtube.com/watch?v=${i.id}`} target="_blank" rel="noreferrer"
+        {shown.map((i) => {
+          const url = `https://www.youtube.com/watch?v=${i.id}`;
+          return (
+          <a key={i.id} href={url} target="_blank" rel="noreferrer"
              className="overflow-hidden rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900">
             <div className="relative aspect-video bg-neutral-100 dark:bg-neutral-800">
               <img loading="lazy" src={`https://i.ytimg.com/vi/${i.id}/mqdefault.jpg`} alt="" className="h-full w-full object-cover" />
               <span className={`absolute left-2 top-2 rounded-md px-2 py-0.5 text-xs ${m.badge}`}>{m.label}</span>
               {i.sec > 0 && <span className="absolute bottom-1.5 right-1.5 rounded bg-black/70 px-1.5 text-xs text-white">{dur(i.sec)}</span>}
+              <button
+                type="button"
+                onClick={(e) => copyLink(e, url, i.id)}
+                title="リンクをコピー"
+                className="absolute right-2 top-2 rounded-md bg-black/65 px-2 py-0.5 text-xs text-white transition-colors hover:bg-black/80"
+              >
+                {copiedId === i.id ? "コピー済み" : "🔗 コピー"}
+              </button>
             </div>
             <div className="p-2.5">
               <p className="line-clamp-2 text-sm">{i.title}</p>
@@ -242,7 +282,8 @@ export default function YtList({ type }: { type: YtType }) {
               </p>
             </div>
           </a>
-        ))}
+          );
+        })}
       </div>
 
       {/* もっと見る / さらに読み込む */}

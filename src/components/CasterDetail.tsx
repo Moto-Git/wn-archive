@@ -56,6 +56,36 @@ export default function CasterDetail({ name, profile = {} }: { name: string; pro
   const [all, setAll] = useState<Broadcast[]>([]);
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(PAGE);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const markCopied = (id: string) => {
+    setCopiedId(id);
+    setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1500);
+  };
+
+  const copyLink = (e: React.MouseEvent, url: string, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard.writeText(url).then(
+      () => markCopied(id),
+      () => {
+        // Clipboard API が使えない環境向けのフォールバック（古いブラウザ・権限制限時）。
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand("copy");
+          markCopied(id);
+        } catch {
+          // それでも失敗したら諦める（クリック自体は無害なので何もしない）。
+        }
+        document.body.removeChild(ta);
+      }
+    );
+  };
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}broadcasts.json`)
@@ -164,14 +194,24 @@ export default function CasterDetail({ name, profile = {} }: { name: string; pro
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {shown.map((b) => {
               const rugby = b.kind === "rugby";
+              const id = b.video + b.date + b.slot;
+              const url = `https://www.youtube.com/watch?v=${b.video}`;
               return (
-                <a key={b.video + b.date + b.slot}
-                   href={`https://www.youtube.com/watch?v=${b.video}`}
+                <a key={id}
+                   href={url}
                    target="_blank" rel="noreferrer"
                    className="overflow-hidden rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900">
                   <div className="relative aspect-video bg-neutral-100 dark:bg-neutral-800">
                     <img loading="lazy" src={`https://i.ytimg.com/vi/${b.video}/mqdefault.jpg`} alt="" className="h-full w-full object-cover" />
                     <span className="absolute left-2 top-2 rounded-md bg-black/65 px-2 py-0.5 text-xs text-white">{b.slot} {b.program}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => copyLink(e, url, id)}
+                      title="リンクをコピー"
+                      className="absolute right-2 top-2 rounded-md bg-black/65 px-2 py-0.5 text-xs text-white transition-colors hover:bg-black/80"
+                    >
+                      {copiedId === id ? "コピー済み" : "🔗 コピー"}
+                    </button>
                   </div>
                   <div className="flex items-center justify-between gap-2 p-3">
                     <span className="text-xs text-neutral-500">{dateLabel(b.date)}</span>
