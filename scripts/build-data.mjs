@@ -126,7 +126,22 @@ if (existsSync(specialsPath)) {
   }
 }
 
-broadcasts.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.slot < b.slot ? 1 : -1));
+// 実際の開始時刻（分）で並べる。枠の文字列だけだと、同じ20:00枠の2本（中断→21:30再開）の
+// 順が定まらず、「特番」が時刻に関係なく日の先頭に来ていた（2026-09-13）。
+// タイトルの「21:30〜」は枠の中（枠の時刻〜3時間以内）のときだけ採用する。長時間の通し配信
+// （「5:00〜17:00」が複数枠に載る）や前夜1:00〜の動画まで時刻で動かすと、逆に順が崩れるため。
+// 23:00枠は翌1:00〜の深夜配信なので日の最後、時刻の分からない特番（週刊地震情報など）は最下段。
+function startMin(b) {
+  if (b.slot === "23:00") return 25 * 60;
+  const tm = (b.title || "").match(/(\d{1,2}):(\d{2})\s*[〜~～]/);
+  const t = tm ? +tm[1] * 60 + +tm[2] : null;
+  const sm = (b.slot || "").match(/^(\d{2}):(\d{2})$/);
+  if (!sm) return t ?? -1;                       // 特番: タイトル時刻があれば使う
+  const s = +sm[1] * 60 + +sm[2];
+  return t !== null && t >= s && t < s + 180 ? t : s;
+}
+const cmp = (x, y) => (x < y ? -1 : x > y ? 1 : 0);
+broadcasts.sort((a, b) => cmp(b.date, a.date) || startMin(b) - startMin(a) || cmp(b.slot, a.slot) || cmp(a.video, b.video));
 
 // 集計（キャスター出演数・予報士出演数・年一覧）
 const casterCount = {};
