@@ -105,7 +105,13 @@ if (existsSync(specialsPath)) {
   const specials = JSON.parse(readFileSync(specialsPath, "utf8"));
   const existingIds = new Set(broadcasts.map((b) => b.video));
   for (const s of specials) {
-    if (existingIds.has(s.video)) continue; // CSV済みの動画は重複除外
+    if (existingIds.has(s.video)) {
+      // CSV済みの動画は重複除外。ただし種別(コラボ/天体/花火)は手でキュレーションした specials を優先する
+      // （minorin の特番セルを拾うようになり、コラボ動画が special として先に入るため・2026-09-14）
+      // 公開版では非公開(minorin由来)specialsの種別は反映しない。
+      if (s.source === "official") for (const b of broadcasts) if (b.video === s.video) b.kind = s.kind;
+      continue;
+    }
     if (!FULL && s.source !== "official") continue; // 公開はofficial(天体/花火)のみ
     broadcasts.push({
       date: s.date,
