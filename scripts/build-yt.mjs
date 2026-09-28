@@ -5,6 +5,8 @@
 // 差分更新: scripts/.cache/wn-yt-all.json（全件キャッシュ・gitignore）を基準に
 //   uploads playlist 先頭から新規IDのみ取得。既知IDに連続ヒットで早期停止。
 //   --full で全件を強制再取得（初回バックフィル）。
+//   --ids <file> で改行区切りの動画IDを追加取得（uploads は新しい2万件までしか辿れないため、
+//     それより古い分は yt-dlp --flat-playlist 等で集めたIDを渡して補完する）。
 // APIキー: 環境変数 YT_API_KEY → ~/ClaudeOps/.env の CLAUDE_OPS_YOUTUBE_API_KEY の順。
 //   キーが無ければ既存の出力を維持してスキップ（CIでキー未設定でも壊れない）。
 import { writeFileSync, mkdirSync, existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
@@ -20,6 +22,7 @@ const CHANNEL = "UCNsidkYpIAQ4QaufptQBPHQ";
 const CHUNK = 500;                        // 1チャンクの件数
 const TYPES = ["video", "short", "live"];
 const FULL = process.argv.includes("--full");
+const IDS_FILE = process.argv.includes("--ids") ? process.argv[process.argv.indexOf("--ids") + 1] : "";
 const STOP_AFTER = 60;                     // 差分時、既知IDに連続ヒットしたら停止する本数
 
 function apiKey() {
@@ -167,7 +170,7 @@ async function fetchDetails(ids) {
       part: "snippet,contentDetails,liveStreamingDetails",
       id: ids.slice(i, i + 50).join(","),
     });
-    for (const v of d.items || []) out.push(shapeVideo(v));
+    for (const v of d.items || []) if (v.snippet.channelId === CHANNEL) out.push(shapeVideo(v));
     if ((i / 50) % 10 === 0) process.stdout.write(`\r  詳細取得 ${Math.min(i + 50, ids.length)}/${ids.length}`);
   }
   if (ids.length) process.stdout.write("\n");
@@ -278,6 +281,12 @@ async function main() {
   console.log(FULL ? "● フルバックフィル（全件取得）" : `● 差分更新（キャッシュ ${byId.size} 件）`);
   const { ids, partial } = await collectIds(uploads, FULL ? new Set() : new Set(byId.keys()));
   console.log(`  新規ID ${ids.length} 件${partial ? "（既知ヒットで早期停止）" : ""}`);
+  if (IDS_FILE) {
+    const extra = [...new Set(readFileSync(IDS_FILE, "utf8").split(/\s+/))]
+      .filter((id) => /^[\w-]{11}$/.test(id) && !byId.has(id) && !ids.includes(id));
+    console.log(`  追加ID ${extra.length} 件（${IDS_FILE}）`);
+    ids.push(...extra);
+  }
 
   if (ids.length) {
     const fresh = await fetchDetails(ids);
