@@ -29,6 +29,24 @@ const PROGRAMS = ["モーニング", "サンシャイン", "コーヒータイ�
 const WD = ["日", "月", "火", "水", "木", "金", "土"];
 const PAGE = 60;
 
+// 定型の枠（【LIVE】/最新天気ニュース・地震情報/日付/〈ウェザーニュースLiVE…〉/#タグ）を外して、その回の見出しだけ残す。
+const FRAME = [
+  /[〈＜<][^〈＜<〉＞>]*ウェザーニュースLiVE[^〉＞>]*[〉＞>]?/g,          // 〈ウェザーニュースLiVEムーン・…〉
+  /ウェザーニュースLiVE[^〉＞>]*[〉＞>]/g,                              // 開き括弧が欠けた版
+  /#\S+/g,                                                             // #防災DAY
+  /^[^【]{0,8}?【(?:LIVE|ライブ|アーカイブ|archives)[^】]{0,8}】/i,       // 【LIVE】【ライブ配信済み】など配信状態の見出し
+  /(?:[朝昼夜]の)?(?:最新|最近)?(?:天気|気象|台風[0-9０-９]+号)?(?:ニュース)?[・／/]?(?:台風[0-9０-９]+号・)?(?:地震|気象)・?(?:気象|地震)?情報/g,
+  /天気解説/g,
+  /(?:\d{4}年\s*\d{1,2}月|\d{1,2}月|\d{4}\.\d{1,2}\.)\s*\d{1,2}日?\s*(?:[(（][^)）]*[)）])?(?:\s*→\s*(?:\d{1,2}月)?\d{1,2}日?\s*[(（][^)）]*[)）])?(?:\s*\d{1,2}:\d{2}(?:\s*[〜~]\s*(?:\d{1,2}日\s*[(（][^)）]*[)）]\s*)?(?:\d{1,2}(?::\d{2}|時))?)?)?/g,
+  /^\s*\d{1,2}:\d{2}\s*〜/,
+  /ウェザーニュースLiVE/g,
+];
+function shortTitle(t = ""): string {
+  let s = t;
+  for (const re of FRAME) s = s.replace(re, " ");
+  return s.replace(/[\s　]*[／/][\s　／/]*/g, "／").replace(/[\s　]+/g, " ")
+    .replace(/^[\s／]+|[\s／]+$/g, "");
+}
 function dateLabel(d: string) {
   const t = new Date(d + "T00:00:00");
   return `${d.slice(5).replace("-", "/")}（${WD[t.getDay()]}）`;
@@ -245,6 +263,7 @@ export default function BroadcastArchive() {
           const kindLabel = KIND_LABEL[b.kind] ?? "LIVE";
           const id = b.video + b.date + b.slot;
           const url = `https://www.youtube.com/watch?v=${b.video}`;
+          const short = shortTitle(b.title);
           return (
             <a
               key={id}
@@ -278,6 +297,9 @@ export default function BroadcastArchive() {
                   <span className={`rounded-md px-2 py-0.5 text-xs ${kindColor}`}>{kindLabel}</span>
                 </div>
                 <div className="font-medium">{b.caster || "—"}</div>
+                {short && (
+                  <p title={b.title} className="line-clamp-2 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">{short}</p>
+                )}
                 {b.weather && <div className="text-xs text-neutral-400">天気 / {b.weather}</div>}
               </div>
             </a>
