@@ -60,7 +60,7 @@ function loadCasterDict() {
   if (existsSync(BROADCASTS)) {
     try {
       for (const b of JSON.parse(readFileSync(BROADCASTS, "utf8")))
-        if (b.caster) dict.set(norm(b.caster), b.caster);
+        if (b.caster && b.caster !== "なし") dict.set(norm(b.caster), b.caster);  // 「なし」＝キャスター不在の印。名前として扱わない
     } catch { /* 無ければキャスター辞書なしで続行 */ }
   }
   return dict;

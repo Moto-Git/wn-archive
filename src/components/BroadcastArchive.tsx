@@ -136,7 +136,7 @@ export default function BroadcastArchive() {
         (year === "all" || b.date.startsWith(year)) &&
         (caster === "all" || b.caster === caster) &&
         (forecaster === "all" || b.weather === forecaster) &&
-        (!nq || b.caster.replace(/\s/g, "").includes(nq))
+        (!nq || [b.caster, b.title || ""].some((s) => s.replace(/\s/g, "").includes(nq)))
     );
   }, [broadcasts, q, kind, program, year, caster, forecaster]);
 
@@ -160,7 +160,7 @@ export default function BroadcastArchive() {
         <input
           value={q}
           onChange={(e) => { setQ(e.target.value); reset(); }}
-          placeholder="キャスター名で検索…"
+          placeholder="キャスター名・タイトルで検索…"
           className="h-10 w-full rounded-lg border border-neutral-200 bg-transparent px-3 text-sm outline-none focus:border-neutral-400 sm:w-64 dark:border-neutral-700"
         />
       </header>
