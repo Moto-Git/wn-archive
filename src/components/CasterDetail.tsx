@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-
-type Broadcast = {
-  date: string; slot: string; program: string;
-  caster: string; weather: string; kind: string; video: string; title: string;
-};
+import {
+  type Broadcast, KIND_LABEL, KIND_COLOR, KIND_BORDER, slotLabel, shortTitle, useAutoMore,
+} from "../lib/broadcast";
 
 const WD = ["日", "月", "火", "水", "木", "金", "土"];
 const PROGRAMS = ["モーニング", "サンシャイン", "コーヒータイム", "アフタヌーン", "イブニング", "ムーン"];
@@ -26,6 +24,80 @@ function Bar({ rows }: { rows: { name: string; count: number }[] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+// GitHub の草のような年間カレンダー。1マス=1日、色の濃さ=その日の担当放送数。
+// SVG 1枚（約370マス）なので軽い。年はボタンで切り替え、既定は最新の年。
+function YearCalendar({ items }: { items: Broadcast[] }) {
+  const byDay = useMemo(() => {
+    const m = new Map<string, Broadcast[]>();
+    for (const b of items) m.set(b.date, [...(m.get(b.date) || []), b]);
+    return m;
+  }, [items]);
+  const years = useMemo(() => [...new Set(items.map((b) => b.date.slice(0, 4)))].sort(), [items]);
+  const [year, setYear] = useState(() => years.at(-1) || "");
+  useEffect(() => { if (!years.includes(year)) setYear(years.at(-1) || ""); }, [years, year]);
+  if (!year) return null;
+
+  const C = 11, G = 2, TOP = 14, LEFT = 18;         // マスの大きさ・間隔・月ラベル/曜日ラベルの余白
+  const start = new Date(`${year}-01-01T00:00:00`);
+  const offset = start.getDay();                    // 1/1 の曜日ぶん1列目を下げる
+  const cells: { d: string; col: number; row: number; n: number; titles: string }[] = [];
+  const months: { col: number; label: string }[] = [];
+  let total = 0, activeDays = 0;
+  for (let t = new Date(start); t.getFullYear() === +year; t.setDate(t.getDate() + 1)) {
+    const d = `${year}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+    const idx = offset + Math.round((+t - +start) / 86400000);
+    const col = Math.floor(idx / 7), row = idx % 7;
+    if (t.getDate() === 1) months.push({ col, label: `${t.getMonth() + 1}月` });
+    const list = byDay.get(d) || [];
+    total += list.length; if (list.length) activeDays++;
+    cells.push({ d, col, row, n: list.length, titles: list.map((b) => slotLabel(b)).join("・") });
+  }
+  const cols = Math.max(...cells.map((c) => c.col)) + 1;
+  const fill = (n: number) =>
+    n === 0 ? "fill-neutral-200 dark:fill-neutral-800"
+    : n === 1 ? "fill-sky-300 dark:fill-sky-800"
+    : n === 2 ? "fill-sky-500 dark:fill-sky-600"
+    : "fill-sky-700 dark:fill-sky-400";
+
+  return (
+    <section className="mb-6 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base font-medium">
+          担当カレンダー <span className="ml-1 text-xs font-normal text-neutral-400">{year}年 {activeDays}日・{total}放送</span>
+        </h2>
+        <div className="flex flex-wrap gap-1">
+          {years.map((y) => (
+            <button key={y} onClick={() => setYear(y)} aria-pressed={y === year}
+              className={`rounded-md border px-2 py-0.5 text-xs ${y === year
+                ? "border-neutral-400 bg-neutral-900 text-white dark:bg-white dark:text-neutral-900"
+                : "border-neutral-200 text-neutral-600 hover:bg-neutral-100 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800"}`}>{y}</button>
+          ))}
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <svg width={LEFT + cols * (C + G)} height={TOP + 7 * (C + G)} role="img" aria-label={`${year}年の担当カレンダー`}>
+          {months.map((m) => (
+            <text key={m.label} x={LEFT + m.col * (C + G)} y={10} className="fill-neutral-400 text-[9px]">{m.label}</text>
+          ))}
+          {["日", "月", "火", "水", "木", "金", "土"].map((w, i) => i % 2 === 1 && (
+            <text key={w} x={0} y={TOP + i * (C + G) + 9} className="fill-neutral-400 text-[9px]">{w}</text>
+          ))}
+          {cells.map((c) => (
+            <rect key={c.d} x={LEFT + c.col * (C + G)} y={TOP + c.row * (C + G)} width={C} height={C} rx={2} className={fill(c.n)}>
+              <title>{`${c.d}  ${c.n ? `${c.n}放送（${c.titles}）` : "担当なし"}`}</title>
+            </rect>
+          ))}
+        </svg>
+      </div>
+      <div className="mt-2 flex items-center justify-end gap-1 text-[10px] text-neutral-400">
+        少 {[0, 1, 2, 3].map((n) => (
+          <svg key={n} width={C} height={C}><rect width={C} height={C} rx={2} className={fill(n)} /></svg>
+        ))} 多
+      </div>
+    </section>
   );
 }
 
@@ -113,6 +185,9 @@ export default function CasterDetail({ name, profile = {} }: { name: string; pro
   }, [mine]);
 
   const shown = mine.slice(0, limit);
+  const hasMore = limit < mine.length;
+  const more = () => setLimit((l) => Math.min(l + PAGE, mine.length));
+  const sentinel = useAutoMore(more, hasMore);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 text-neutral-900 dark:text-neutral-100">
@@ -190,20 +265,22 @@ export default function CasterDetail({ name, profile = {} }: { name: string; pro
             </section>
           </div>
 
+          <YearCalendar items={mine} />
+
           <h2 className="mb-3 text-base font-medium">担当した放送</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {shown.map((b) => {
-              const rugby = b.kind === "rugby";
+              const short = shortTitle(b.title);
               const id = b.video + b.date + b.slot;
               const url = `https://www.youtube.com/watch?v=${b.video}`;
               return (
                 <a key={id}
                    href={url}
                    target="_blank" rel="noreferrer"
-                   className="overflow-hidden rounded-xl border border-neutral-200 bg-white hover:border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900">
+                   className={`overflow-hidden rounded-xl border bg-white hover:border-neutral-400 dark:bg-neutral-900 dark:hover:border-neutral-600 ${KIND_BORDER[b.kind] ?? "border-neutral-200 dark:border-neutral-800"}`}>
                   <div className="relative aspect-video bg-neutral-100 dark:bg-neutral-800">
                     <img loading="lazy" src={`https://i.ytimg.com/vi/${b.video}/mqdefault.jpg`} alt="" className="h-full w-full object-cover" />
-                    <span className="absolute left-2 top-2 rounded-md bg-black/65 px-2 py-0.5 text-xs text-white">{b.slot} {b.program}</span>
+                    <span className="absolute left-2 top-2 rounded-md bg-black/65 px-2 py-0.5 text-xs text-white">{slotLabel(b)}</span>
                     <button
                       type="button"
                       onClick={(e) => copyLink(e, url, id)}
@@ -213,20 +290,23 @@ export default function CasterDetail({ name, profile = {} }: { name: string; pro
                       {copiedId === id ? "コピー済み" : "🔗 コピー"}
                     </button>
                   </div>
-                  <div className="flex items-center justify-between gap-2 p-3">
-                    <span className="text-xs text-neutral-500">{dateLabel(b.date)}</span>
-                    <span className={`rounded-md px-2 py-0.5 text-xs ${rugby ? "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300" : "bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300"}`}>
-                      {rugby ? "ラグビー特番" : "LIVE"}
-                    </span>
+                  <div className="flex flex-col gap-1.5 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-neutral-500">{dateLabel(b.date)}</span>
+                      <span className={`rounded-md px-2 py-0.5 text-xs ${KIND_COLOR[b.kind] ?? KIND_COLOR.live}`}>
+                        {KIND_LABEL[b.kind] ?? "LIVE"}
+                      </span>
+                    </div>
+                    {short && <p title={b.title} className="line-clamp-2 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">{short}</p>}
                   </div>
                 </a>
               );
             })}
           </div>
 
-          {limit < mine.length && (
-            <div className="mt-6 text-center">
-              <button onClick={() => setLimit((l) => l + PAGE)}
+          {hasMore && (
+            <div ref={sentinel} className="mt-6 text-center">
+              <button onClick={more}
                 className="rounded-lg border border-neutral-300 px-5 py-2 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
                 もっと見る（残り {(mine.length - limit).toLocaleString()} 件）
               </button>
