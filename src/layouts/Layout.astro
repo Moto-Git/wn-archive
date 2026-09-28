@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import DisplaySettings from "../components/DisplaySettings.tsx";
 
 interface Props {
   title: string;
@@ -28,12 +29,12 @@ const nav = [
 	</head>
 	<body class="min-h-screen bg-neutral-50 text-neutral-900 dark:bg-neutral-950 dark:text-neutral-100">
 		<header class="sticky top-0 z-30 border-b border-neutral-200/70 bg-neutral-50/80 backdrop-blur-md dark:border-neutral-800/70 dark:bg-neutral-950/80">
-			<div class="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-				<a href={base} class="flex shrink-0 items-center gap-2 font-semibold tracking-tight">
+			<div class="mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5">
+				<a href={base} class="order-1 flex shrink-0 items-center gap-2 font-semibold tracking-tight">
 					<span class="flex h-6 w-6 items-center justify-center rounded-md bg-sky-600 text-xs text-white dark:bg-sky-500">WN</span>
 					<span>LiVE アーカイブ</span>
 				</a>
-				<nav class="-mx-1 flex items-center gap-0.5 overflow-x-auto text-sm sm:mx-0 sm:gap-1">
+				<nav class="order-3 -mx-1 flex w-full min-w-0 items-center gap-0.5 overflow-x-auto text-sm sm:order-2 sm:mx-0 sm:ml-auto sm:w-auto sm:gap-1">
 					{nav.map((n) => (
 						<a
 							href={n.href}
@@ -48,6 +49,7 @@ const nav = [
 						</a>
 					))}
 				</nav>
+				<div class="order-2 ml-auto sm:order-3 sm:ml-0"><DisplaySettings client:idle /></div>
 			</div>
 		</header>
 

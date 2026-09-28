@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   type Broadcast, KIND_LABEL, KIND_COLOR, KIND_BORDER, slotLabel, shortTitle, useAutoMore,
 } from "../lib/broadcast";
+import { useDisplay, useTimes, TimeInfo } from "../lib/display";
 
 const WD = ["日", "月", "火", "水", "木", "金", "土"];
 const PROGRAMS = ["モーニング", "サンシャイン", "コーヒータイム", "アフタヌーン", "イブニング", "ムーン"];
@@ -129,6 +130,8 @@ export default function CasterDetail({ name, profile = {} }: { name: string; pro
   const [loading, setLoading] = useState(true);
   const [limit, setLimit] = useState(PAGE);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [display] = useDisplay();
+  const times = useTimes(import.meta.env.BASE_URL, display.pub || display.live || display.dur);
 
   const markCopied = (id: string) => {
     setCopiedId(id);
@@ -298,6 +301,7 @@ export default function CasterDetail({ name, profile = {} }: { name: string; pro
                       </span>
                     </div>
                     {short && <p title={b.title} className="line-clamp-2 text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">{short}</p>}
+                    <TimeInfo id={b.video} d={display} times={times} />
                   </div>
                 </a>
               );

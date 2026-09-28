@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import LiveNowBanner from "./LiveNowBanner";
+import { useDisplay, useTimes, TimeInfo } from "../lib/display";
 
 type Item = { id: string; title: string; date: string; sec: number; caster?: string; weather?: string };
 type ChunkInfo = { file: string; n: number; from: string; to: string };
@@ -40,6 +41,8 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 export default function YtList({ type }: { type: YtType }) {
   const base = import.meta.env.BASE_URL;
   const m = META[type];
+  const [display] = useDisplay();
+  const times = useTimes(base, display.pub || display.live || display.dur);
 
   const [index, setIndex] = useState<Index | null>(null);
   const [items, setItems] = useState<Item[]>([]);
@@ -280,6 +283,7 @@ export default function YtList({ type }: { type: YtType }) {
                 {i.caster && <span className="ml-1 text-teal-600 dark:text-teal-400">· {i.caster}</span>}
                 {i.weather && <span className="ml-1">／{i.weather}</span>}
               </p>
+              <div className="mt-1"><TimeInfo id={i.id} d={display} times={times} sec={i.sec} hideDur /></div>
             </div>
           </a>
           );

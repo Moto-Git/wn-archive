@@ -4,6 +4,7 @@ import {
   type Broadcast, KIND_LABEL, KIND_COLOR, KIND_BORDER,
   weekday, slotLabel, shortTitle, Highlight, useLiveStatus, jstTime, useAutoMore,
 } from "../lib/broadcast";
+import { useDisplay, useTimes, TimeInfo } from "../lib/display";
 
 type NameCount = { name: string; count: number };
 
@@ -86,6 +87,8 @@ export default function BroadcastArchive() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [urlReady, setUrlReady] = useState(false);
   const liveStatus = useLiveStatus(base);
+  const [display] = useDisplay();
+  const times = useTimes(base, display.pub || display.live || display.dur);
 
   const set = (k: FilterKey, v: string) => { setF((p) => ({ ...p, [k]: v })); setLimit(PAGE); };
   const clearAll = () => { setF(DEFAULTS); setLimit(PAGE); };
@@ -382,6 +385,7 @@ export default function BroadcastArchive() {
                     </p>
                   )}
                   {b.weather && <div className="text-xs text-neutral-400">天気 / {b.weather}</div>}
+                  <TimeInfo id={b.video} d={display} times={times} />
                 </div>
               </a>
             </Fragment>

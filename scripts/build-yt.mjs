@@ -17,6 +17,11 @@ import { homedir } from "node:os";
 const __dir = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = resolve(__dir, "../public/wn-yt");
 const CACHE = resolve(__dir, ".cache/wn-yt-all.json");
+// 動画ごとの日時（公開・配信開始・配信終了）。一覧チャンクには載せず別ファイルにして、
+// 画面の「表示設定」で日時表示をオンにしたときだけ読み込む。値は Unix 分（0=なし）。
+// ファイル上は容量を抑えるため、ライブ以外は公開の数値だけ、ライブは [公開, 開始-公開, 終了-開始] の差分で持つ。
+// [0,0,0] は「取得を試みたが詳細が返らなかった」印（非公開・削除・他チャンネル）で、毎回取り直さないために残す。
+const TIMES = resolve(__dir, "../public/wn-yt/times.json");
 const BROADCASTS = resolve(__dir, "../public/broadcasts.json");
 const CHANNEL = "UCNsidkYpIAQ4QaufptQBPHQ";
 const CHUNK = 500;                        // 1チャンクの件数
@@ -147,7 +152,9 @@ async function collectIds(uploads, known) {
   return { ids, partial: false };
 }
 
-// videos.list の1件を {id,title,date,type,sec} に整形。
+const toMin = (iso) => (iso ? Math.round(Date.parse(iso) / 60000) : 0);
+
+// videos.list の1件を {id,title,date,type,sec,t} に整形。
 function shapeVideo(v) {
   const live = !!v.liveStreamingDetails;
   const sec = durationSec(v.contentDetails?.duration);
@@ -159,7 +166,17 @@ function shapeVideo(v) {
     date: (v.liveStreamingDetails?.actualStartTime || v.snippet.publishedAt || "").slice(0, 10),
     type,
     sec,
+    t: [toMin(v.snippet.publishedAt), toMin(v.liveStreamingDetails?.actualStartTime), toMin(v.liveStreamingDetails?.actualEndTime)],
   };
+}
+
+const encT = ([p, s, e]) => (!p && !s && !e ? [0, 0, 0] : s ? [p, s - p, e ? e - s : 0] : p);
+const decT = (v) => (typeof v === "number" ? [v, 0, 0]
+  : v[0] === 0 && v[1] === 0 && v[2] === 0 ? [0, 0, 0] : [v[0], v[0] + v[1], v[2] ? v[0] + v[1] + v[2] : 0]);
+function loadTimes() {
+  try {
+    return new Map(Object.entries(JSON.parse(readFileSync(TIMES, "utf8"))).map(([id, v]) => [id, decT(v)]));
+  } catch { return new Map(); }
 }
 
 // videos.list で詳細を取得して {id,title,date,type,sec} に整形。
@@ -276,6 +293,8 @@ async function main() {
   }
   const cache = loadCache();
   const byId = new Map(cache.items.map((x) => [x.id, x]));
+  const times = loadTimes();
+  for (const [id, it] of byId) if (!it.t && times.has(id)) it.t = times.get(id);
   const uploads = "UU" + CHANNEL.slice(2);
 
   console.log(FULL ? "● フルバックフィル（全件取得）" : `● 差分更新（キャッシュ ${byId.size} 件）`);
@@ -287,10 +306,29 @@ async function main() {
     console.log(`  追加ID ${extra.length} 件（${IDS_FILE}）`);
     ids.push(...extra);
   }
+  // アーカイブ（broadcasts.json）に載っている動画のうち未取得のもの。uploads は新しい2万件までしか
+  // 辿れず、限定公開の配信も出てこないため、アーカイブ側のIDでも補う。
+  const want = new Set(ids);
+  if (existsSync(BROADCASTS)) {
+    try {
+      for (const b of JSON.parse(readFileSync(BROADCASTS, "utf8")))
+        if (b.video && !byId.has(b.video) && !times.has(b.video)) want.add(b.video);
+    } catch { /* 読めなければスキップ */ }
+  }
+  // 日時が未取得の既知動画（日時表示を追加する前に取った分）も取り直す。初回だけ全件、以降は新規分のみ。
+  for (const [id, it] of byId) if (!it.t) want.add(id);
+  if (want.size > ids.length) console.log(`  補完ID ${want.size - ids.length} 件（アーカイブ未取得・日時未取得）`);
+  ids.splice(0, ids.length, ...want);
 
   if (ids.length) {
     const fresh = await fetchDetails(ids);
     for (const it of fresh) byId.set(it.id, it);
+    // 詳細が返らなかったID（非公開・削除・他チャンネル）は印を付けて次回以降は取りに行かない
+    const got = new Set(fresh.map((x) => x.id));
+    for (const id of ids) if (!got.has(id)) {
+      const it = byId.get(id);
+      if (it) it.t = it.t || [0, 0, 0]; else times.set(id, [0, 0, 0]);
+    }
   }
 
   // 現在LIVE中・配信予定のスナップショットを取得（search 各100 unit）。
@@ -315,6 +353,8 @@ async function main() {
   writeFileSync(CACHE, JSON.stringify({ updated: new Date().toISOString(), items: all }));
 
   const summary = emit(all, pending);
+  for (const it of all) if (it.t) times.set(it.id, it.t);
+  writeFileSync(TIMES, JSON.stringify(Object.fromEntries([...times].map(([id, v]) => [id, encT(v)]))));
   console.log(`✓ wn-yt 出力: 動画${summary.video} / ショート${summary.short} / ライブ${summary.live}（計${all.length}） → ${OUT_DIR}`);
 }
 main().catch((e) => { console.error("✗ build-yt 失敗:", e.message); process.exit(1); });
