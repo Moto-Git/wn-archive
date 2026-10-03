@@ -286,6 +286,36 @@ function emit(all, pending = new Set()) {
   return summary;
 }
 
+// --- キャスターカレンダー（キャスカレ）関連動画の抽出 ---
+// 「台風カレンダー」「魚介類の旬カレンダー」は対象外にするため、キャスカレ固有の言い回しだけを拾う。
+const CAL_RE = /キャスターカレンダー|キャスカレ|カレンダー\s*20\d\d|カレンダー撮影/;
+// 何年版か: タイトルの「カレンダー2027」「2019年 …キャスターカレンダー」から。無ければ公開日から
+// （毎年秋〜冬に翌年版を売るので、7月以降の公開は翌年版とみなす）。
+function calEdition(it) {
+  const m = /(?:カレンダー|キャスカレ)\s*(20\d\d)/.exec(it.title) || /(20\d\d)年?\s*ウェザーニュースキャスターカレンダー/.exec(it.title);
+  if (m) return m[1];
+  const [y, mo] = it.date.split("-");
+  return String(+y + (+mo >= 7 ? 1 : 0));
+}
+const calCat = (it) =>
+  it.type === "live" ? "live" : /メイキング|making|vlog|bts|撮影|teaser|オフショット/i.test(it.title) ? "making" : "promo";
+
+function buildCalendar(all, casters, pending) {
+  const list = all
+    .filter((it) => CAL_RE.test(it.title) && !pending.has(it.id))
+    .map((it) => {
+      const t = norm(it.title);
+      // 複数キャスターが出る回（#小林李衣奈 #江川清音 …）もあるので、該当者を全員拾う
+      const names = [...casters.values()].filter((n) => t.includes(norm(n)));
+      const o = { id: it.id, title: it.title, date: it.date, type: it.type, sec: it.sec, ed: calEdition(it), cat: calCat(it) };
+      if (names.length) o.casters = names;
+      return o;
+    })
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  writeFileSync(join(OUT_DIR, "calendar.json"), JSON.stringify({ updated: new Date().toISOString().slice(0, 16), items: list }));
+  return list.length;
+}
+
 async function main() {
   if (!KEY) {
     console.log("! YouTube APIキー未設定。wn-yt は既存出力を維持してスキップ。");
@@ -353,6 +383,7 @@ async function main() {
   writeFileSync(CACHE, JSON.stringify({ updated: new Date().toISOString(), items: all }));
 
   const summary = emit(all, pending);
+  console.log(`  キャスカレ関連: ${buildCalendar(all, casters, pending)}本 → calendar.json`);
   for (const it of all) if (it.t) times.set(it.id, it.t);
   writeFileSync(TIMES, JSON.stringify(Object.fromEntries([...times].map(([id, v]) => [id, encT(v)]))));
   console.log(`✓ wn-yt 出力: 動画${summary.video} / ショート${summary.short} / ライブ${summary.live}（計${all.length}） → ${OUT_DIR}`);

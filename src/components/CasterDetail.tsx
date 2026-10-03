@@ -67,7 +67,7 @@ function YearCalendar({ items }: { items: Broadcast[] }) {
     <section className="mb-6 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-medium">
-          担当カレンダー <span className="ml-1 text-xs font-normal text-neutral-400">{year}年 {activeDays}日・{total}放送</span>
+          出演カレンダー <span className="ml-1 text-xs font-normal text-neutral-400">{year}年 {activeDays}日・{total}放送</span>
         </h2>
         <div className="flex flex-wrap gap-1">
           {years.map((y) => (
@@ -79,7 +79,7 @@ function YearCalendar({ items }: { items: Broadcast[] }) {
         </div>
       </div>
       <div className="overflow-x-auto">
-        <svg width={LEFT + cols * (C + G)} height={TOP + 7 * (C + G)} role="img" aria-label={`${year}年の担当カレンダー`}>
+        <svg width={LEFT + cols * (C + G)} height={TOP + 7 * (C + G)} role="img" aria-label={`${year}年の出演カレンダー`}>
           {months.map((m) => (
             <text key={m.label} x={LEFT + m.col * (C + G)} y={10} className="fill-neutral-400 text-[9px]">{m.label}</text>
           ))}
@@ -97,6 +97,35 @@ function YearCalendar({ items }: { items: Broadcast[] }) {
         少 {[0, 1, 2, 3].map((n) => (
           <svg key={n} width={C} height={C}><rect width={C} height={C} rx={2} className={fill(n)} /></svg>
         ))} 多
+      </div>
+    </section>
+  );
+}
+
+// このキャスターが出ているキャスターカレンダー（キャスカレ）関連動画。calendar.json から抽出。
+function CalendarVideos({ name }: { name: string }) {
+  const base = import.meta.env.BASE_URL;
+  const [list, setList] = useState<{ id: string; title: string; date: string; ed: string }[]>([]);
+  useEffect(() => {
+    fetch(`${base}wn-yt/calendar.json`).then((r) => r.json())
+      .then((d) => setList(d.items.filter((it: { casters?: string[] }) => it.casters?.includes(name))))
+      .catch(() => {});
+  }, [base, name]);
+  if (!list.length) return null;
+  return (
+    <section className="mb-6 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
+      <div className="mb-3 flex items-baseline justify-between gap-2">
+        <h2 className="text-base font-medium">キャスターカレンダー関連 <span className="ml-1 text-xs font-normal text-neutral-400">{list.length}本</span></h2>
+        <a href={`${base}calendar?ed=all&caster=${encodeURIComponent(name)}`} className="text-xs text-sky-700 hover:underline dark:text-sky-400">一覧で見る →</a>
+      </div>
+      <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+        {list.map((it) => (
+          <a key={it.id} href={`https://www.youtube.com/watch?v=${it.id}`} target="_blank" rel="noreferrer" className="w-44 shrink-0">
+            <img loading="lazy" src={`https://i.ytimg.com/vi/${it.id}/mqdefault.jpg`} alt="" className="aspect-video w-full rounded-lg object-cover" />
+            <p className="mt-1 line-clamp-2 text-xs">{it.title}</p>
+            <p className="text-[11px] text-neutral-400">{it.ed}年版 · {it.date.replace(/-/g, "/")}</p>
+          </a>
+        ))}
       </div>
     </section>
   );
@@ -269,6 +298,7 @@ export default function CasterDetail({ name, profile = {} }: { name: string; pro
           </div>
 
           <YearCalendar items={mine} />
+          <CalendarVideos name={name} />
 
           <h2 className="mb-3 text-base font-medium">担当した放送</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

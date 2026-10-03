@@ -1,0 +1,12 @@
+---
+import Layout from "../layouts/Layout.astro";
+import CalendarList from "../components/CalendarList.tsx";
+---
+
+<Layout
+	title="キャスターカレンダー | ウェザーニュースLiVE アーカイブ"
+	description="ウェザーニュースキャスターカレンダー（キャスカレ）の告知・メイキング・販売配信の動画を版ごと・キャスターごとにまとめた一覧。"
+	active="calendar"
+>
+	<CalendarList client:idle />
+</Layout>

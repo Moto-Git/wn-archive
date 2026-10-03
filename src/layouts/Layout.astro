@@ -5,7 +5,7 @@ import DisplaySettings from "../components/DisplaySettings.tsx";
 interface Props {
   title: string;
   description?: string;
-  active?: "home" | "youtube" | "caster" | "updates";
+  active?: "home" | "youtube" | "caster" | "calendar" | "updates";
 }
 
 const { title, description = "", active } = Astro.props;
@@ -15,6 +15,7 @@ const nav = [
   { key: "home", label: "アーカイブ", href: base },
   { key: "youtube", label: "公式YouTube", href: `${base}youtube/video` },
   { key: "caster", label: "キャスター", href: `${base}caster/` },
+  { key: "calendar", label: "キャスカレ", href: `${base}calendar` },
   { key: "updates", label: "更新情報", href: `${base}updates` },
 ];
 ---
