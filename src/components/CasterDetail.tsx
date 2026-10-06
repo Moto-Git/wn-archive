@@ -135,16 +135,27 @@ function CalendarVideos({ name }: { name: string }) {
 const SHORT_PAGE = 12;
 function CasterShorts({ name }: { name: string }) {
   const base = import.meta.env.BASE_URL;
-  const [list, setList] = useState<[string, string, string, number][]>([]);
+  const [all, setList] = useState<[string, string, string, number, number][]>([]);
   const [limit, setLimit] = useState(SHORT_PAGE);
+  const [who, setWho] = useState("all");   // all=すべて / solo=単独 / multi=複数人
+  const solo = all.filter((x) => (x[4] ?? 1) === 1).length;
+  const list = who === "all" ? all : all.filter((x) => (who === "solo") === ((x[4] ?? 1) === 1));
   useEffect(() => {
     fetch(`${base}wn-yt/caster-shorts/${encodeURIComponent(name.replace(/\s/g, ""))}.json`)
       .then((r) => (r.ok ? r.json() : [])).then(setList).catch(() => {});
   }, [base, name]);
-  if (!list.length) return null;
+  if (!all.length) return null;
   return (
-    <section className="mb-6 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
-      <h2 className="mb-3 text-base font-medium">ショート動画 <span className="ml-1 text-xs font-normal text-neutral-400">{list.length}本（タイトルに名前があるもの）</span></h2>
+    <section id="shorts" className="mb-6 scroll-mt-20 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base font-medium">ショート動画 <span className="ml-1 text-xs font-normal text-neutral-400">{list.length}本（タイトルに名前があるもの）</span></h2>
+        <select value={who} onChange={(e) => { setWho(e.target.value); setLimit(SHORT_PAGE); }} aria-label="出演人数で絞り込み"
+          className="h-9 rounded-lg border border-neutral-200 bg-transparent px-2 text-sm text-neutral-900 outline-none dark:border-neutral-700 dark:text-neutral-100">
+          <option value="all">すべて（{all.length}）</option>
+          <option value="solo">単独（{solo}）</option>
+          <option value="multi">複数人（{all.length - solo}）</option>
+        </select>
+      </div>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
         {list.slice(0, limit).map(([id, title, date]) => (
           <a key={id} href={`https://www.youtube.com/shorts/${id}`} target="_blank" rel="noreferrer" title={title}>
@@ -301,6 +312,8 @@ export default function CasterDetail({ name, profile = {} }: { name: string; pro
                 <a href={profile.url} target="_blank" rel="noreferrer"
                    className="rounded-lg border border-neutral-200 px-3 py-1 text-xs text-neutral-500 hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">公式プロフィール</a>
               )}
+              <a href="#shorts"
+                 className="rounded-lg border border-pink-200 px-3 py-1 text-xs text-pink-700 hover:bg-pink-50 dark:border-pink-900 dark:text-pink-300 dark:hover:bg-pink-950">ショート動画 ↓</a>
             </div>
           </div>
         </div>

@@ -224,6 +224,11 @@ export default function YtList({ type }: { type: YtType }) {
                   {caster} の詳細ページ（出演履歴・統計）→
                 </a>
               )}
+              {caster !== "all" && type === "short" && (
+                <a href={`${base}caster/${caster.replace(/\s/g, "")}#shorts`} className="text-xs text-pink-700 hover:underline dark:text-pink-400">
+                  {caster} のショート一覧（単独・複数人で絞り込み）→
+                </a>
+              )}
             </label>
           )}
           {people.forecasters.length > 0 && (

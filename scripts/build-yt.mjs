@@ -317,7 +317,7 @@ function buildCalendar(all, casters, pending) {
 }
 
 // キャスター別ページ用: タイトルに名前が入っているショートを人ごとのファイルに出す（複数人の回は全員に入れる）。
-// public/wn-yt/caster-shorts/{氏名スペース無し}.json … [[id, title, date, sec], …]（新しい順）
+// public/wn-yt/caster-shorts/{氏名スペース無し}.json … [[id, title, date, sec, 人数], …]（新しい順）。人数で単独/複数人を絞る
 function buildCasterShorts(all, casters, pending) {
   const dir = join(OUT_DIR, "caster-shorts");
   rmSync(dir, { recursive: true, force: true });
@@ -326,12 +326,13 @@ function buildCasterShorts(all, casters, pending) {
   for (const it of all) {
     if (it.type !== "short" || pending.has(it.id)) continue;
     const t = norm(it.title);
-    for (const n of casters.values()) if (t.includes(norm(n))) by.set(n, [...(by.get(n) || []), it]);
+    const hit = [...casters.values()].filter((n) => t.includes(norm(n)));
+    for (const n of hit) by.set(n, [...(by.get(n) || []), { ...it, people: hit.length }]);
   }
   let total = 0;
   for (const [n, list] of by) {
     list.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
-    writeFileSync(join(dir, `${norm(n)}.json`), JSON.stringify(list.map((x) => [x.id, x.title, x.date, x.sec])));
+    writeFileSync(join(dir, `${norm(n)}.json`), JSON.stringify(list.map((x) => [x.id, x.title, x.date, x.sec, x.people])));
     total += list.length;
   }
   return `${by.size}名・延べ${total}本`;
