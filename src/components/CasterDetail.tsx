@@ -131,6 +131,42 @@ function CalendarVideos({ name }: { name: string }) {
   );
 }
 
+// タイトルにこのキャスターの名前が入っている公式YouTubeショート（build-yt の caster-shorts/）。
+const SHORT_PAGE = 12;
+function CasterShorts({ name }: { name: string }) {
+  const base = import.meta.env.BASE_URL;
+  const [list, setList] = useState<[string, string, string, number][]>([]);
+  const [limit, setLimit] = useState(SHORT_PAGE);
+  useEffect(() => {
+    fetch(`${base}wn-yt/caster-shorts/${encodeURIComponent(name.replace(/\s/g, ""))}.json`)
+      .then((r) => (r.ok ? r.json() : [])).then(setList).catch(() => {});
+  }, [base, name]);
+  if (!list.length) return null;
+  return (
+    <section className="mb-6 rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
+      <h2 className="mb-3 text-base font-medium">ショート動画 <span className="ml-1 text-xs font-normal text-neutral-400">{list.length}本（タイトルに名前があるもの）</span></h2>
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+        {list.slice(0, limit).map(([id, title, date]) => (
+          <a key={id} href={`https://www.youtube.com/shorts/${id}`} target="_blank" rel="noreferrer" title={title}>
+            <img loading="lazy" src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt=""
+              className="aspect-[9/16] w-full rounded-lg bg-neutral-100 object-cover dark:bg-neutral-800" />
+            <p className="mt-1 line-clamp-2 text-[11px] leading-snug">{title}</p>
+            <p className="text-[10px] text-neutral-400">{date.replace(/-/g, "/")}</p>
+          </a>
+        ))}
+      </div>
+      {limit < list.length && (
+        <div className="mt-3 text-center">
+          <button onClick={() => setLimit((l) => l + SHORT_PAGE * 2)}
+            className="rounded-lg border border-neutral-300 px-4 py-1.5 text-sm hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800">
+            もっと見る（残り {list.length - limit} 本）
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
 type Profile = {
   code?: string; name?: string; kana?: string; photo?: string;
   birthday?: string; blood?: string; birthplace?: string; hobby?: string;
@@ -299,6 +335,7 @@ export default function CasterDetail({ name, profile = {} }: { name: string; pro
 
           <YearCalendar items={mine} />
           <CalendarVideos name={name} />
+          <CasterShorts name={name} />
 
           <h2 className="mb-3 text-base font-medium">担当した放送</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

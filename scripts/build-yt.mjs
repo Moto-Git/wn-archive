@@ -316,6 +316,27 @@ function buildCalendar(all, casters, pending) {
   return list.length;
 }
 
+// キャスター別ページ用: タイトルに名前が入っているショートを人ごとのファイルに出す（複数人の回は全員に入れる）。
+// public/wn-yt/caster-shorts/{氏名スペース無し}.json … [[id, title, date, sec], …]（新しい順）
+function buildCasterShorts(all, casters, pending) {
+  const dir = join(OUT_DIR, "caster-shorts");
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  const by = new Map();
+  for (const it of all) {
+    if (it.type !== "short" || pending.has(it.id)) continue;
+    const t = norm(it.title);
+    for (const n of casters.values()) if (t.includes(norm(n))) by.set(n, [...(by.get(n) || []), it]);
+  }
+  let total = 0;
+  for (const [n, list] of by) {
+    list.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+    writeFileSync(join(dir, `${norm(n)}.json`), JSON.stringify(list.map((x) => [x.id, x.title, x.date, x.sec])));
+    total += list.length;
+  }
+  return `${by.size}名・延べ${total}本`;
+}
+
 async function main() {
   if (!KEY) {
     console.log("! YouTube APIキー未設定。wn-yt は既存出力を維持してスキップ。");
@@ -383,6 +404,7 @@ async function main() {
   writeFileSync(CACHE, JSON.stringify({ updated: new Date().toISOString(), items: all }));
 
   const summary = emit(all, pending);
+  console.log(`  キャスター別ショート: ${buildCasterShorts(all, casters, pending)}`);
   console.log(`  キャスカレ関連: ${buildCalendar(all, casters, pending)}本 → calendar.json`);
   for (const it of all) if (it.t) times.set(it.id, it.t);
   writeFileSync(TIMES, JSON.stringify(Object.fromEntries([...times].map(([id, v]) => [id, encT(v)]))));
