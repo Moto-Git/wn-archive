@@ -78,6 +78,19 @@ let broadcasts = lines
     };
   });
 
+// 同じ放送（日付・枠・動画）が複数行あれば1行にする。CSV は取込元が2系統（クラウド/Mac）あり、
+// git の行単位統合で取得時刻だけ違う同じ行が2つ残ったことがある（2026-10-14 二重表示）。
+// 取込側は放送単位のマージドライバで対策済みだが、ここでも必ず1行にしてから出す。
+{
+  const seen = new Set();
+  broadcasts = broadcasts.filter((b) => {
+    const k = `${b.date}|${b.slot}|${b.video}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
 // 防御的重複排除: 深夜まで続く配信をライブ取得(official)が「（深夜）」枠として再記録すると
 // 同じ動画がアーカイブに二重表示される。取得側(watch-digest)でもガード済みだが、CSV に
 // 混入しても配信されないようここでも除外する（2026-07-06 重複表示バグの対策）。
