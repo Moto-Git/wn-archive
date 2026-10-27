@@ -40,6 +40,15 @@ export default function CalendarList() {
   const [display] = useDisplay();
   const times = useTimes(base, display.pub || display.live || display.dur);
   const set = (k: keyof F, v: string) => setF((p) => ({ ...p, [k]: v }));
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copyLink = (e: React.MouseEvent, url: string, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard?.writeText(url).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1500);
+    }).catch(() => {});
+  };
 
   useEffect(() => {
     fetch(`${base}wn-yt/calendar.json`).then((r) => r.json()).then((d) => setItems(d.items)).catch(() => setItems([]));
@@ -139,14 +148,20 @@ export default function CalendarList() {
             </h2>
           )}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {list.map((it) => (
-              <a key={it.id} href={`https://www.youtube.com/watch?v=${it.id}`} target="_blank" rel="noreferrer"
+            {list.map((it) => {
+              const url = it.type === "short" ? `https://www.youtube.com/shorts/${it.id}` : `https://www.youtube.com/watch?v=${it.id}`;
+              return (
+              <a key={it.id} href={url} target="_blank" rel="noreferrer"
                 className="overflow-hidden rounded-xl border border-neutral-200 bg-white hover:border-neutral-400 dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-600">
                 <div className="relative aspect-video bg-neutral-100 dark:bg-neutral-800">
                   <img loading="lazy" src={`https://i.ytimg.com/vi/${it.id}/mqdefault.jpg`} alt="" className="h-full w-full object-cover" />
                   <span className={`absolute left-2 top-2 rounded-md px-2 py-0.5 text-xs ${CAT_COLOR[it.cat]}`}>
                     {CATS.find(([k]) => k === it.cat)?.[1]}
                   </span>
+                  <button type="button" onClick={(e) => copyLink(e, url, it.id)} title="リンクをコピー"
+                    className="absolute right-2 top-2 rounded-md bg-black/65 px-2 py-0.5 text-xs text-white transition-colors hover:bg-black/80">
+                    {copiedId === it.id ? "コピー済み" : "🔗 コピー"}
+                  </button>
                   {it.sec > 0 && <span className="absolute bottom-1.5 right-1.5 rounded bg-black/70 px-1.5 text-xs text-white">{durLabel(it.sec)}</span>}
                 </div>
                 <div className="flex flex-col gap-1 p-2.5">
@@ -158,7 +173,8 @@ export default function CalendarList() {
                   <TimeInfo id={it.id} d={display} times={times} sec={it.sec} hideDur />
                 </div>
               </a>
-            ))}
+              );
+            })}
           </div>
         </section>
       ))}
